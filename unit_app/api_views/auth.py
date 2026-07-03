@@ -69,14 +69,14 @@ def signup(request):
 
         send_email(
             email,
-            "Verify Your Kaskazi Account",
+            "Verify Your Unit Account",
             f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; color: #333;">
         
-            <h2 style="color: #2563EB;">Welcome to Kaskazi</h2>
+            <h2 style="color: #2563EB;">Welcome to Unit</h2>
 
             <p>
-            Thank you for registering with Kaskazi. To complete your account setup,
+            Thank you for registering with Unit. To complete your account setup,
             please verify your email address by clicking the button below.
             </p>
 
@@ -110,7 +110,7 @@ def signup(request):
             </p>
 
             <p style="font-size: 14px; color: #777;">
-            Vitacura Team
+            The Unit Team
             </p>
             </div>
             """
@@ -221,14 +221,14 @@ def request_reset(request):
 
     send_email(
         email,
-       "Reset Your Kaskazi Password",
+       "Reset Your Unit Password",
        f"""
        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; color: #333;">
 
         <h2 style="color: #2563EB;">Password Reset Request</h2>
 
         <p>
-            We received a request to reset your Kaskazi account password.
+            We received a request to reset your Unit account password.
         </p>
 
         <p>
@@ -269,7 +269,7 @@ def request_reset(request):
           </p>
 
           <p style="font-size: 14px; color: #777;">
-            Kaskazi Team
+            The Unit Team
           </p>
 
           </div>

@@ -37,6 +37,7 @@ class User(AbstractUser):
         ("landlord", "Landlord"),
         ("tenant", "Tenant"),
         ("service provider", "Service Provider"),
+        ("equipment supplier", "Equipment Supplier"),
         ("client", "Client"),
     )
     full_name = models.CharField(max_length=100)
@@ -65,3 +66,178 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Package(models.Model):
+    CHOICES = (
+        ('starter bundle', 'Starter Bundle'),
+        ('growth engine', 'Growth Engine'),
+        ('enterprise core', 'Enterprise Core'),
+    )
+    name = models.CharField(max_length=100, choices=CHOICES)
+    description = models.TextField()
+    monthly_price = models.DecimalField(max_digits=10, decimal_places=2)
+    yearly_price = models.DecimalField(max_digits=10, decimal_places=2)
+    month_days = models.PositiveIntegerField(default=30)
+    year_days = models.PositiveIntegerField(default=365)
+    number_of_units = models.PositiveIntegerField(default=0)
+    mpesa_daraja = models.BooleanField(default=False)
+    email_notifications = models.BooleanField(default=False)
+    logs_duration = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+class Subscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='subscriptions')
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.package.name}"
+
+class Property(models.Model):
+    PROPERTY_TYPES = [
+        ('apartment', 'Apartment'),
+        ('house', 'House'),
+        ('condo', 'Condo'),
+        ('townhouse', 'Townhouse'),
+    ]
+
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('occupied', 'Occupied'),
+        ('under_maintenance', 'Under Maintenance'),
+    ]
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='properties')
+    landlord = models.ForeignKey(User, on_delete=models.CASCADE, related_name='landlord_properties', null=True, blank=True)
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='properties')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    property_type = models.CharField(max_length=20, choices=PROPERTY_TYPES)
+    address = models.CharField(max_length=255)
+    legal_plot_number = models.CharField(max_length=100)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
+    images = models.JSONField(default=list)  # Store image URLs as JSON array
+    is_featured = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+class Unit(models.Model):
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('occupied', 'Occupied'),
+        ('under_maintenance', 'Under Maintenance'),
+    ]
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
+    price_per_month = models.DecimalField(max_digits=10, decimal_places=2)
+    bedrooms = models.PositiveIntegerField()
+    bathrooms = models.PositiveIntegerField()
+    max_guests = models.PositiveIntegerField()
+    amenities = models.JSONField(default=list)  # Store as JSON array
+    status = models.CharField(max_length=20, choices=Property.STATUS_CHOICES, default='available')
+    images = models.JSONField(default=list)  # Store image URLs as JSON array
+    is_featured = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.property.name}"
+
+class Tenant(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tenant_profile')
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='tenants')
+    lease_start_date = models.DateField()
+    lease_end_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.unit.name}"
+
+class RentPayment(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='rent_payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(default=timezone.now)
+    is_paid = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.tenant.user.full_name} - {self.amount} - {'Paid' if self.is_paid else 'Unpaid'}"
+
+
+class ServiceProvider(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='service_provider_profile')
+    services_offered = models.JSONField(default=list)  # Store as JSON array
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.services_offered}"
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.title}"
+
+class MaintenanceRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+    ]
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='maintenance_requests')
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='maintenance_requests')
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.tenant.user.full_name} - {self.unit.name} - {self.status}"
+
+class Store(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stores')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+class Product(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='products')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    stock_quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.store.name}"
