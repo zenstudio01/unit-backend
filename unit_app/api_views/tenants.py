@@ -7,7 +7,7 @@ def get_tenants(request):
 
     user = request.user
 
-    if user.role == "PM":
+    if user.role == "property manager":
         tenants = Tenant.objects.filter(
             unit__property__owner=user
         ).select_related(
@@ -16,7 +16,7 @@ def get_tenants(request):
             "unit__property"
         )
 
-    elif user.role == "LANDLORD":
+    elif user.role == "landlord":
         tenants = Tenant.objects.filter(
             unit__property__landlord=user
         ).select_related(

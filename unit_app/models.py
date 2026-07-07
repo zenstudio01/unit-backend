@@ -35,6 +35,7 @@ class User(AbstractUser):
         ("admin", "Admin"),
         ("property manager", "Property Manager"),
         ("landlord", "Landlord"),
+        ("caretaker", "Caretaker"),
         ("tenant", "Tenant"),
         ("service provider", "Service Provider"),
         ("equipment supplier", "Equipment Supplier"),

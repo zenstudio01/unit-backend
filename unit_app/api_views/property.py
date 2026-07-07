@@ -9,7 +9,7 @@ def property_list(request):
     if user.role.lower() == 'landlord':
         properties = Property.objects.filter(landlord=user)
     else:
-        properties = Property.objects.filter(owner=user)
+        properties = Property.objects.all()
 
     serialized_data = []
     for prop in properties:

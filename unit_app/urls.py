@@ -4,6 +4,10 @@ from .api_views.auth import *
 from .api_views.dashboard import *
 from .api_views.property import *
 from .api_views.tenants import *
+from .api_views.admin import *
+from .api_views.landlord import *
+from .api_views.subscription import *
+from .api_views.store import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -30,5 +34,27 @@ urlpatterns = [
     path('get_tenants/', get_tenants, name='get_tenants'),
     path('add_tenant/', add_tenant, name='add_tenant'),
     path('request_rent/', request_rent, name='request_rent'),
+
+    # admin - users
+    path('admin/users/', admin_users_list, name='admin_users_list'),
+    path('admin/users/<int:pk>/toggle-active/', admin_toggle_active, name='admin_toggle_active'),
+    path('admin/users/<int:pk>/verify/', admin_verify_user, name='admin_verify_user'),
+    path('admin/users/<int:pk>/reset-password/', admin_reset_password, name='admin_reset_password'),
+    path('admin/users/<int:pk>/update-profile/', admin_update_profile, name='admin_update_profile'),
+    path('admin/users/<int:pk>/', admin_delete_user, name='admin_delete_user'),
+
+    # admin - dashboard
+    path('admin/dashboard/metrics/', admin_dashboard_metrics, name='admin_dashboard_metrics'),
+
+    # landlord
+    path('landlords/', landlord_list, name='landlord_list'),
+    path('landlords/create/', landlord_create, name='landlord_create'),
+    path('landlords/<int:pk>/payout/', landlord_process_payout, name='landlord_payout'),
+
+    # subscription
+    path('packages/', get_packages, name='get_packages'),
+
+    # store
+    path('get_stores/', get_stores, name='get_stores'),
 
 ]
