@@ -38,6 +38,7 @@ class User(AbstractUser):
         ("caretaker", "Caretaker"),
         ("tenant", "Tenant"),
         ("service provider", "Service Provider"),
+        ("store owner", "Store Owner"),
         ("equipment supplier", "Equipment Supplier"),
         ("client", "Client"),
     )
@@ -230,22 +231,61 @@ class MaintenanceRequest(models.Model):
 
 class Store(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stores')
-    name = models.CharField(max_length=255)
-    description = models.TextField()
+    store_name = models.CharField(max_length=255, default="Default Store")
+    description = models.TextField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return self.store_name
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='products')
-    name = models.CharField(max_length=255)
+    product_name = models.CharField(max_length=255)
     description = models.TextField()
     stock_quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    barcode_number = models.CharField(max_length=100, blank=True, null=True)
+    buying_price = models.DecimalField(max_digits=10, decimal_places=2)
+    selling_price = models.DecimalField(max_digits=10, decimal_places=2)
+    supplier = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} - {self.store.name}"
+        return f"{self.product_name} - {self.store.store_name}"
+
+
+# product sales model
+class ProductSale(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='products')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='store_sales', default=1)
+    quantity = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    sold_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Sale # {self.id} for {self.store.store_name} Product {self.product.product_name}"
+
+# payment model
+class ProductPayment(models.Model):
+    PAYMENT_METHODS = [
+        ("mpesa", "Mpesa"),
+        ("card", "Card"),
+        ("paystack", "Paystack"),
+    ]
+    STATUS = [
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+        ("pending", "Pending"),
+    ]
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, default=1)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
+    payment_status = models.CharField(max_length=10, choices=STATUS)
+    checkout_request_id = models.CharField(max_length=100, default="N/A")
+    receipt_number = models.CharField(max_length=100, default="N/A")
+    paid_at = models.DateTimeField(default=timezone.now)

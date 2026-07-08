@@ -53,16 +53,9 @@ def signup(request):
             email_verified=False,
         )
 
-        if role == 'worker':
-            worker = WorkerProfile.objects.create(
-                user=user
-            )
-
-            WorkerWallet.objects.create(
-                worker=worker,
-                amount=0.0,
-                float_amount=0.0,
-                pending_amount=0.0
+        if role == 'store owner':
+            store = Store.objects.create(
+                owner=user,
             )
 
         link = f"http://192.168.100.12:8000/verify_email?token={token}"

@@ -57,6 +57,11 @@ urlpatterns = [
 
     # store
     path('get_stores/', get_stores, name='get_stores'),
+    path('store/dashboard_metrics/', store_dashboard_metrics, name='store_dashboard_metrics'),
+    path('store/sales_record/', record_sale, name='store_sales_record'),
+    path('store/add_product/', add_product, name='store_add_product'),
+    path('store/get_products/', get_products, name='store_get_products'),
+    path('store/add_stock/', add_stock, name='store_add_stock'),
 
     # property manager
     path("prop/dashboard_statistics/", dashboard_statistics, name='dashboard_statistics'),
