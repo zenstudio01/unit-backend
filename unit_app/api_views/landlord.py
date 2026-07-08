@@ -6,10 +6,11 @@ from .common_imports import *
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def landlord_list(request):
+    user = request.user
     search_query = request.GET.get('search', '')
     
     # Filter users whose baseline role is explicitly flagged as 'landlord'
-    landlords = User.objects.filter(role__iexact='landlord').order_by('-created_at')
+    landlords = User.objects.filter(role__iexact='landlord', landlord_properties__owner=request.user).order_by('-created_at')
     
     if search_query:
         landlords = landlords.filter(
@@ -30,6 +31,7 @@ def landlord_list(request):
         # (Using a dynamic aggregate calculation for your production payouts model)
         payout_sum = RentPayment.objects.filter(
             tenant__unit__property__landlord=lnd, 
+            tenant__unit__property__owner=request.user,
             is_paid=True
         ).aggregate(total=Sum('amount'))['total'] or 0
 
@@ -68,7 +70,7 @@ def landlord_create(request):
 
     # Instantiate the Landlord profile entry into the main User Identity table
     landlord_user = User.objects.create(
-        username=email.split('@')[0] + str(random.randint(10, 99)),
+        username=email,
         full_name=name,
         email=email,
         phone_number=phone,

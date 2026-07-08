@@ -6,3 +6,4 @@ from .admin import *
 from .landlord import *
 from .subscription import *
 from .store import *
+from .property_manager import *

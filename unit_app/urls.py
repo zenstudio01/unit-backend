@@ -8,6 +8,7 @@ from .api_views.admin import *
 from .api_views.landlord import *
 from .api_views.subscription import *
 from .api_views.store import *
+from .api_views.property_manager import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -56,5 +57,10 @@ urlpatterns = [
 
     # store
     path('get_stores/', get_stores, name='get_stores'),
+
+    # property manager
+    path("prop/dashboard_statistics/", dashboard_statistics, name='dashboard_statistics'),
+    path("prop/payment_summary/", payment_summary, name='payment_summary'),
+    path("prop/get_payments/", get_payments, name='get_payments'),
 
 ]

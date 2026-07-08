@@ -174,10 +174,17 @@ class Tenant(models.Model):
         return f"{self.user.full_name} - {self.unit.name}"
 
 class RentPayment(models.Model):
+    CHOICES = [
+        ('mpesa', 'Mpesa'),
+        ('paystack', 'Paystack'),
+        ('bank', 'Bank'),
+    ]
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='rent_payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateTimeField(default=timezone.now)
     is_paid = models.BooleanField(default=False)
+    payment_method = models.CharField(max_length=50, choices=CHOICES, default="Mpesa")  # Assuming M-Pesa as default
+    transaction_id = models.CharField(max_length=255, blank=True, null=True, default="M299920sjsjsk")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

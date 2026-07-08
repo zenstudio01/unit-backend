@@ -8,8 +8,17 @@ def property_list(request):
     # Determine property lookup scope based on user role classification
     if user.role.lower() == 'landlord':
         properties = Property.objects.filter(landlord=user)
-    else:
+    elif user.role.lower() == 'property manager':
+        properties = Property.objects.filter(owner=request.user)
+        # properties = Property.objects.all()
+    elif user.role.lower() == 'admin':
         properties = Property.objects.all()
+    else:
+        return Response(
+            {"message": "Unauthorized access: Insufficient role permissions."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
 
     serialized_data = []
     for prop in properties:
