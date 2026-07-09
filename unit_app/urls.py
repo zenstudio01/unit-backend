@@ -62,6 +62,10 @@ urlpatterns = [
     path('store/add_product/', add_product, name='store_add_product'),
     path('store/get_products/', get_products, name='store_get_products'),
     path('store/add_stock/', add_stock, name='store_add_stock'),
+    path("store/get_orders/", get_orders, name="get_orders"),
+    path("store/get_payments/", get_payments, name="get_payments"),
+    path("store/profile/", get_store_profile, name="get_store_profile"),
+    path("store/profile_update/", update_store_profile, name="update_store_profile"),
 
     # property manager
     path("prop/dashboard_statistics/", dashboard_statistics, name='dashboard_statistics'),

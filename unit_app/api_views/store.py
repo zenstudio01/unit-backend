@@ -229,3 +229,198 @@ def add_stock(request):
 
 
 
+# get orders api
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_orders(request):
+    try:
+        owner = request.user
+
+        try:
+            store = Store.objects.get(owner=owner)
+        except Store.DoesNotExist:
+            return JsonResponse(
+                {"message": "Store not found"},
+                status=404
+            )
+
+        orders = ProductSale.objects.filter(store=store)\
+            .select_related("product", "buyer")\
+            .order_by("-sold_at")
+
+        data = []
+
+        for order in orders:
+            data.append({
+                "id": order.id,
+                "product_id": order.product.id,
+                "product_name": order.product.product_name,
+                "buyer_id": order.buyer.id,
+                "buyer_name": order.buyer.get_full_name() if order.buyer.get_full_name() else order.buyer.username,
+                "quantity": order.quantity,
+                "price": float(order.price),
+                "total": float(order.price * order.quantity),
+                "latitude": float(order.latitude) if order.latitude else None,
+                "longitude": float(order.longitude) if order.longitude else None,
+                "order_status": order.order_status,
+                "sold_at": order.sold_at,
+            })
+
+        return JsonResponse(
+            {
+                "message": "Orders retrieved successfully",
+                "count": len(data),
+                "orders": data,
+            },
+            status=200,
+        )
+
+    except Exception as e:
+        return JsonResponse(
+            {
+                "message": "An error occurred",
+                "error": str(e),
+            },
+            status=500,
+        )
+# end of get orders api
+
+
+# get payments api
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_payments(request):
+    try:
+        owner = request.user
+
+        try:
+            store = Store.objects.get(owner=owner)
+        except Store.DoesNotExist:
+            return JsonResponse(
+                {"message": "Store not found"},
+                status=404
+            )
+
+        payments = ProductPayment.objects.filter(store=store)\
+            .select_related("product")\
+            .order_by("-paid_at")
+
+        data = []
+
+        for payment in payments:
+            data.append({
+                "id": payment.id,
+                "product_id": payment.product.id,
+                "product_name": payment.product.product_name,
+                "amount": float(payment.amount),
+                "payment_method": payment.payment_method,
+                "payment_status": payment.payment_status,
+                "checkout_request_id": payment.checkout_request_id,
+                "receipt_number": payment.receipt_number,
+                "paid_at": payment.paid_at,
+            })
+
+        return JsonResponse(
+            {
+                "message": "Payments retrieved successfully",
+                "count": len(data),
+                "payments": data,
+            },
+            status=200,
+        )
+
+    except Exception as e:
+        return JsonResponse(
+            {
+                "message": "An error occurred",
+                "error": str(e),
+            },
+            status=500,
+        )
+# end of get payments api
+
+# get store profile
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_store_profile(request):
+    try:
+        owner = request.user
+
+        try:
+            store = Store.objects.get(owner=owner)
+        except Store.DoesNotExist:
+            return JsonResponse(
+                {"message": "Store not found"},
+                status=404
+            )
+
+        return JsonResponse({
+            "id": store.id,
+            "store_name": store.store_name,
+            "location": store.location,
+            "phone_number": store.phone_number,
+            "email": store.email,
+            "description": store.description,
+            "created_at": store.created_at,
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "message": "An error occurred",
+            "error": str(e)
+        }, status=500)
+
+
+# update store profile
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_store_profile(request):
+    try:
+        owner = request.user
+
+        try:
+            store = Store.objects.get(owner=owner)
+        except Store.DoesNotExist:
+            return JsonResponse(
+                {"message": "Store not found"},
+                status=404
+            )
+
+        store.store_name = request.data.get(
+            "store_name",
+            store.store_name
+        )
+
+        store.location = request.data.get(
+            "location",
+            store.location
+        )
+
+        store.phone_number = request.data.get(
+            "phone_number",
+            store.phone_number
+        )
+
+        store.email = request.data.get(
+            "email",
+            store.email
+        )
+
+        store.description = request.data.get(
+            "description",
+            store.description
+        )
+
+        store.save()
+
+        return JsonResponse({
+            "message": "Store profile updated successfully"
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "message": "An error occurred",
+            "error": str(e)
+        }, status=500)
+
+

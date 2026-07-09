@@ -57,6 +57,24 @@ def signup(request):
             store = Store.objects.create(
                 owner=user,
             )
+        if role == 'professional':
+            professional = data.get("profession")
+            experience = data.get("experience")
+            professional = Professional.objects.create(
+                user=user,
+                professional_title=professional,
+                years_of_experience=experience,
+            )
+        if role == 'company':
+            company_name = data.get("company_name")
+            company_description = data.get("company_description")
+            company = Company.objects.create(
+                owner=user,
+                name=company_name,
+                description=company_description,
+                email=email,
+                phone_number=phone_number,
+            )
 
         link = f"http://192.168.100.12:8000/verify_email?token={token}"
 
@@ -112,6 +130,7 @@ def signup(request):
         return JsonResponse({"message": "Account created successfully. Verify your email."}, status=201)
 
     except Exception as e:
+        print(f"An error occurred: {e}")
         return JsonResponse({"message": "Signup failed", "error": str(e)}, status=500)
 
 # email verification api

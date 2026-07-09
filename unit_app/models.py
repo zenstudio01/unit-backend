@@ -39,7 +39,8 @@ class User(AbstractUser):
         ("tenant", "Tenant"),
         ("service provider", "Service Provider"),
         ("store owner", "Store Owner"),
-        ("equipment supplier", "Equipment Supplier"),
+        ("professional", "Professional"),
+        ("company", "Company"),
         ("client", "Client"),
     )
     full_name = models.CharField(max_length=100)
@@ -232,6 +233,8 @@ class MaintenanceRequest(models.Model):
 class Store(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stores')
     store_name = models.CharField(max_length=255, default="Default Store")
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
@@ -260,10 +263,20 @@ class Product(models.Model):
 
 # product sales model
 class ProductSale(models.Model):
+    CHOICES = [
+        ("pending", "Pending"),
+        ("on-transist", "On-transist"),
+        ("delivered", "Delivered"),
+    ]
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='products')
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='store_sales', default=1)
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='buyer', default=1)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    order_status = models.CharField(max_length=20, choices=CHOICES, default="pending")
     sold_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -289,3 +302,35 @@ class ProductPayment(models.Model):
     checkout_request_id = models.CharField(max_length=100, default="N/A")
     receipt_number = models.CharField(max_length=100, default="N/A")
     paid_at = models.DateTimeField(default=timezone.now)
+
+
+# company model
+class Company(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='companies')
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=20)
+    description = models.TextField()
+    logo = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+# professional model
+class Professional(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional_profile')
+    professional_title = models.CharField(max_length=255)
+    years_of_experience = models.PositiveIntegerField()
+    bio = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.company.name}"
+
