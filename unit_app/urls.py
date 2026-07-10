@@ -9,6 +9,10 @@ from .api_views.landlord import *
 from .api_views.subscription import *
 from .api_views.store import *
 from .api_views.property_manager import *
+from .api_views.units import *
+from .api_views.push_notifications import *
+from .api_views.company import *
+from .api_views.notifications import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -71,5 +75,23 @@ urlpatterns = [
     path("prop/dashboard_statistics/", dashboard_statistics, name='dashboard_statistics'),
     path("prop/payment_summary/", payment_summary, name='payment_summary'),
     path("prop/get_payments/", get_payments, name='get_payments'),
+
+    # units
+    path("units/get_my_units/", get_my_units, name="get_my_units"),
+    path("units/update_unit/<int:unit_id>/", update_unit, name='update_unit'),
+
+    # push notifications
+    path("send_expo_token/<int:user_id>/<str:expo_token>/", send_expo_token, name='send_expo_token'),
+
+    # company
+    path("get_all_companies/", get_all_companies, name='get_all_compamies'),
+    path("get_company_profile/", get_company_profile, name="get_company_profile"),
+    path("update_company_profile/", update_company_profile, name="update_company_profile"),
+    path("get_company/<int:company_id>/", get_company, name='get_company'),
+    path("book_company/", book_company, name='book_company'),
+
+    # notifications
+    path("get_notifications/", get_notifications, name='get_notifications'),
+
 
 ]

@@ -58,6 +58,7 @@ def property_create(request):
     property_type_input = data.get('property_type', 'Residential').lower()
     description = data.get('description', '')
     total_units_count = int(data.get('total_units', 0))
+    images = request.FILES.getlist("images")
 
     if not name or not location:
         return Response(
@@ -71,6 +72,11 @@ def property_create(request):
         db_property_type = 'townhouse'
     elif 'mixed' in property_type_input:
         db_property_type = 'condo'
+    
+    uploaded_images = []
+    for image in images:
+        result = cloudinary.uploader.upload(image, folder="properties")
+        uploaded_images.append(result["secure_url"])
 
     # Build the foundational master asset node inside your database
     property_asset = Property.objects.create(
@@ -84,7 +90,8 @@ def property_create(request):
         city=location.split(',')[1].strip() if ',' in location else "Nairobi",
         state="Nairobi",
         country="Kenya",
-        status='available'
+        status='available',
+        images=uploaded_images
     )
 
     # Initialize shell individual sub-units to instantly build up matching totals structures

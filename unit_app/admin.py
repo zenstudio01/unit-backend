@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Package, Subscription, Property, Unit, Tenant, RentPayment, ServiceProvider, Notification, MaintenanceRequest, Store, Product, ProductSale, ProductPayment, Company, Professional
+from .models import User, Package, Subscription, Property, Unit, Tenant, RentPayment, ServiceProvider, Notification, MaintenanceRequest, Store, Product, ProductSale, ProductPayment, Company, Professional, CompanyBooking
 
 
 admin.site.register(User)
@@ -18,3 +18,4 @@ admin.site.register(ProductSale)
 admin.site.register(ProductPayment)
 admin.site.register(Company)
 admin.site.register(Professional)
+admin.site.register(CompanyBooking)

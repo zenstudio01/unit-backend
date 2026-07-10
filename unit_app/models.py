@@ -313,8 +313,10 @@ class Company(models.Model):
     description = models.TextField()
     logo = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
     address = models.TextField(blank=True, null=True)
-    city = models.CharField(max_length=100, blank=True, null=True)
-    country = models.CharField(max_length=100, blank=True, null=True)
+    website = models.CharField(max_length=255, blank=True, null=True)
+    service = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True, default='Nairobi')
+    country = models.CharField(max_length=100, blank=True, null=True, default="Kenya")
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -333,4 +335,172 @@ class Professional(models.Model):
 
     def __str__(self):
         return f"{self.user.full_name} - {self.company.name}"
+
+
+
+class CompanyBooking(models.Model):
+    STATUS = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("completed", "Completed"),
+    ]
+
+    customer = models.ForeignKey(User,on_delete=models.CASCADE,related_name="company_bookings")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE,related_name="bookings")
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    location = models.CharField(max_length=255)
+    preferred_date = models.DateField()
+    preferred_time = models.TimeField()
+    budget = models.DecimalField(max_digits=10,decimal_places=2,null=True,blank=True)
+    status = models.CharField( max_length=20, choices=STATUS,default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.customer.username} -> {self.company.name}"
+
+
+# payments
+class CompanyBookingPayment(models.Model):
+    STATUS = (
+        ("pending", "Pending"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+    )
+    company_booking = models.OneToOneField(CompanyBooking,on_delete=models.CASCADE)
+    payment_method = models.CharField(max_length=50, blank=True, null=True) 
+    amount = models.DecimalField( max_digits=10,decimal_places=2)
+    revenue = models.DecimalField( max_digits=10,decimal_places=2)
+    transaction_id = models.CharField(max_length=100, blank=True,null=True)
+    payment_status = models.CharField( max_length=20, choices=STATUS, default="pending")
+    receipt_number = models.CharField(max_length=100,blank=True,null=True)
+    checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
+    paid_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"#{self.id} {self.method} {self.amount} {self.status}"
+
+
+class CompanyWallet(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="company_wallet")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
+    float_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    pending_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"#{self.id} Company {self.company.name} {self.amount}"
+
+
+
+# # jobs
+# class Job(models.Model):
+
+#     STATUS = (
+#         ("pending", "Pending"),
+#         ("paid", "Paid"),
+#         ("accepted", "Accepted"),
+#         ("ongoing", "Ongoing"),
+#         ("completed", "Completed"),
+#         ("cancelled", "Cancelled"),
+#         ("rejected", "Rejected"),
+#     )
+
+#     client = models.ForeignKey(User,on_delete=models.CASCADE,related_name="jobs_created")
+#     worker = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name="jobs")
+#     title = models.CharField(max_length=255)
+#     description = models.TextField()
+#     budget = models.DecimalField(max_digits=10,decimal_places=2)
+#     work_sample_image = models.URLField(blank=True,null=True, default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
+#     location = models.CharField(max_length=255)
+#     latitude = models.DecimalField( max_digits=9, decimal_places=6, null=True, blank=True)
+#     longitude = models.DecimalField(max_digits=9, decimal_places=6,null=True,blank=True)
+#     scheduled_date = models.DateField()
+#     scheduled_time = models.TimeField()
+#     status = models.CharField(max_length=20,choices=STATUS,default="pending")
+#     payment_status = models.CharField(max_length=20,choices=STATUS,default="pending")
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} {self.title} {self.budget} {self.location} {self.status}"
+
+# # bookings
+# class Booking(models.Model):
+#     job = models.OneToOneField(Job,on_delete=models.CASCADE)
+#     booked_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} {self.booked_at}"
+
+# reviews
+# class Review(models.Model):
+#     client = models.ForeignKey( User, on_delete=models.CASCADE)
+#     worker = models.ForeignKey( WorkerProfile, on_delete=models.CASCADE)
+#     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name="review")
+#     rating = models.PositiveIntegerField()
+#     comment = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} {self.rating} {self.comment}"
+
+# # notifications
+# class Notification(models.Model):
+#     MSG_TYPE = (
+#         ("booking", "Booking"),
+#         ("message", "Message"),
+#         ("payment", "Payment"),
+#         ("completed", "Completed"),
+#     )
+#     user = models.ForeignKey(User,on_delete=models.CASCADE)
+#     title = models.CharField(max_length=255)
+#     message = models.CharField(default="message", max_length=255)
+#     msg_type = models.TextField(choices=MSG_TYPE)
+#     is_read = models.BooleanField(default=False)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} {self.title}"
+
+
+# # payments
+# class Payment(models.Model):
+#     STATUS = (
+#         ("pending", "Pending"),
+#         ("success", "Success"),
+#         ("failed", "Failed"),
+#     )
+#     job = models.OneToOneField(Job,on_delete=models.CASCADE)
+#     payment_method = models.CharField(max_length=50, blank=True, null=True) 
+#     amount = models.DecimalField( max_digits=10,decimal_places=2)
+#     revenue = models.DecimalField( max_digits=10,decimal_places=2)
+#     transaction_id = models.CharField(max_length=100, blank=True,null=True)
+#     payment_status = models.CharField( max_length=20, choices=STATUS, default="pending")
+#     receipt_number = models.CharField(max_length=100,blank=True,null=True)
+#     checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
+#     paid_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} {self.method} {self.amount} {self.status}"
+
+
+# class Wallet(models.Model):
+#     worker = models.ForeignKey("WorkerProfile", on_delete=models.CASCADE, related_name="worker_wallet")
+#     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
+#     float_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+#     pending_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} Worker {self.worker.user.full_name} {self.amount}"
+
+# class Withdraw(models.Model):
+#     worker = models.ForeignKey("WorkerProfile", on_delete=models.CASCADE, related_name="withdrawals")
+#     amount = models.DecimalField(max_digits=10, decimal_places=2) 
+#     transactionRef = models.CharField(max_length=100, blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"#{self.id} Withdraw {self.worker.user.full_name} {self.amount} ({self.transactionRef})"
 

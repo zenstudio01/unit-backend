@@ -37,3 +37,67 @@ def get_packages(request):
             "success": False,
             "message": str(e)
         }, status=500)
+
+
+
+
+# verify subscription payment
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_subscription_payment(request):
+
+    reference = request.data.get("reference")
+
+    headers = {
+        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
+    }
+
+    response = requests.get(
+        f"https://api.paystack.co/transaction/verify/{reference}",
+        headers=headers,
+    )
+
+    result = response.json()
+
+    if not result["status"]:
+        return Response(
+            {"message": "Verification failed"},
+            status=400
+        )
+
+    payment = result["data"]
+
+    if payment["status"] != "success":
+        return Response(
+            {"message": "Payment not successful"},
+            status=400
+        )
+
+    metadata = payment["metadata"]
+
+    package = Package.objects.get(
+        id=metadata["package_id"]
+    )
+
+    if metadata["billing_cycle"] == "monthly":
+        end_date = timezone.now() + timedelta(
+            days=package.month_days
+        )
+    else:
+        end_date = timezone.now() + timedelta(
+            days=package.year_days
+        )
+
+    Subscription.objects.update_or_create(
+        user=request.user,
+        defaults={
+            "package": package,
+            "start_date": timezone.now(),
+            "end_date": end_date,
+            "is_active": True,
+        },
+    )
+
+    return Response({
+        "message": "Subscription activated successfully."
+    })
