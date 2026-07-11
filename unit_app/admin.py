@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Package, Subscription, Property, Unit, Tenant, RentPayment, ServiceProvider, Notification, MaintenanceRequest, Store, Product, ProductSale, ProductPayment, Company, Professional, CompanyBooking, CompanyBookingPayment, CompanyWallet, PropertyBooking, PropertyBookingPayment
+from .models import User, Package, Subscription, Property, Unit, Tenant, RentPayment, ServiceProvider, Notification, MaintenanceRequest, Store, Product, ProductSale, ProductPayment, Company, Professional, CompanyBooking, CompanyBookingPayment, CompanyWallet, PropertyBooking, PropertyBookingPayment, PropManagerWallet
 
 
 admin.site.register(User)
@@ -23,3 +23,4 @@ admin.site.register(CompanyBookingPayment)
 admin.site.register(CompanyWallet)
 admin.site.register(PropertyBookingPayment)
 admin.site.register(PropertyBooking)
+admin.site.register(PropManagerWallet)

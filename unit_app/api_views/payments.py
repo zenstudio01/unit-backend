@@ -181,7 +181,7 @@ def payment_callback(request):
             company_payment.save()
 
             Notification.objects.create(
-                user=payment.company_booking.owner,
+                user=payment.company_booking.company.owner,
                 title=f"Payment confirmation.",
                 message=f"{payment.receipt_number} Confirmed. Pyament of Ksh. {payment.amount} received successfully.",
                 msg_type='payment'
