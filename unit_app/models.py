@@ -209,6 +209,7 @@ class Notification(models.Model):
     title = models.CharField(max_length=255)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
+    msg_type = models.CharField(max_length=50, default="general")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
