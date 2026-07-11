@@ -75,6 +75,12 @@ def signup(request):
                 email=email,
                 phone_number=phone_number,
             )
+            CompanyWallet.objects.create(
+                company=company,
+                amount=0.0,
+                float_amount=0.0,
+                pending_amount=0.0
+            )
 
         link = f"http://192.168.100.12:8000/verify_email?token={token}"
 

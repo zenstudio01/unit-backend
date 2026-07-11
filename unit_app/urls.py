@@ -13,6 +13,8 @@ from .api_views.units import *
 from .api_views.push_notifications import *
 from .api_views.company import *
 from .api_views.notifications import *
+from .api_views.payments import *
+from .api_views.client import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -79,6 +81,8 @@ urlpatterns = [
     # units
     path("units/get_my_units/", get_my_units, name="get_my_units"),
     path("units/update_unit/<int:unit_id>/", update_unit, name='update_unit'),
+    path("get_available_units/", get_available_units, name="get_available_units"),
+    path("get_unit/<int:unit_id>/", get_unit, name="get_unit"),
 
     # push notifications
     path("send_expo_token/<int:user_id>/<str:expo_token>/", send_expo_token, name='send_expo_token'),
@@ -89,9 +93,25 @@ urlpatterns = [
     path("update_company_profile/", update_company_profile, name="update_company_profile"),
     path("get_company/<int:company_id>/", get_company, name='get_company'),
     path("book_company/", book_company, name='book_company'),
+    path("get_company_bookings/", get_company_bookings, name='get_company_bookings'),
+    path("company_dashboard/", company_dashboard, name='company_dashboard'),
+    path("accept_booking/<int:booking_id>/", accept_booking, name='accept_booking'),
+    path("reject_booking/<int:booking_id>/", reject_booking, name='reject_booking'),
 
     # notifications
     path("get_notifications/", get_notifications, name='get_notifications'),
+
+    # payments
+    path("subscribe_plan/", subscribe_plan, name='subscribe_plan'),
+    path("verify_payment/", verify_payment, name='verify_payment'),
+    path("payment_callback/", payment_callback, name='payment_callback'),
+    path("book_property/", book_property, name='book_property'),
+    path("verify_property_booking_payment/", verify_property_booking_payment, name='verify_property_booking_payment'),
+    path("property_booking_payment_callback/", property_booking_payment_callback, name='property_booking_payment_callback'),
+
+    # client
+    path("get_user_bookings/", get_user_bookings, name='get_user_bookings'),
+
 
 
 ]

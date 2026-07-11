@@ -318,6 +318,7 @@ class Company(models.Model):
     city = models.CharField(max_length=100, blank=True, null=True, default='Nairobi')
     country = models.CharField(max_length=100, blank=True, null=True, default="Kenya")
     postal_code = models.CharField(max_length=20, blank=True, null=True)
+    is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -379,7 +380,7 @@ class CompanyBookingPayment(models.Model):
     paid_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"#{self.id} {self.method} {self.amount} {self.status}"
+        return f"#{self.id} {self.payment_method} {self.amount} {self.payment_status}"
 
 
 class CompanyWallet(models.Model):
@@ -391,6 +392,38 @@ class CompanyWallet(models.Model):
 
     def __str__(self):
         return f"#{self.id} Company {self.company.name} {self.amount}"
+
+class PropertyBooking(models.Model):
+    STATUS = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("completed", "Completed"),
+    ]
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="property_bookings")
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="property_bookings")
+    status = models.CharField( max_length=20, choices=STATUS,default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class PropertyBookingPayment(models.Model):
+    STATUS = (
+        ("pending", "Pending"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+    )
+    property_booking = models.OneToOneField(PropertyBooking,on_delete=models.CASCADE)
+    payment_method = models.CharField(max_length=50, blank=True, null=True) 
+    amount = models.DecimalField( max_digits=10,decimal_places=2)
+    revenue = models.DecimalField( max_digits=10,decimal_places=2)
+    transaction_id = models.CharField(max_length=100, blank=True,null=True)
+    payment_status = models.CharField( max_length=20, choices=STATUS, default="pending")
+    receipt_number = models.CharField(max_length=100,blank=True,null=True)
+    checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
+    paid_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"#{self.id} {self.payment_method} {self.amount} {self.payment_status}"
 
 
 

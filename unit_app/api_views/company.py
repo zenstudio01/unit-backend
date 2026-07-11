@@ -229,5 +229,218 @@ def book_company(request):
 
 
 
+# get company bookings api
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_company_bookings(request):
+    try:
+        # Get the logged-in user's company
+        company = Company.objects.get(owner=request.user)
+
+        # Get all bookings for that company
+        bookings = CompanyBooking.objects.filter(
+            company=company
+        ).select_related("customer").order_by("-created_at")
+
+        data = []
+
+        for booking in bookings:
+            data.append({
+                "id": booking.id,
+                "customer_id": booking.customer.id,
+                "customer_name": booking.customer.full_name,
+                "customer_email": booking.customer.email,
+
+                "title": booking.title,
+                "description": booking.description,
+                "location": booking.location,
+
+                "preferred_date": booking.preferred_date,
+                "preferred_time": booking.preferred_time.strftime("%H:%M"),
+
+                "budget": booking.budget,
+
+                "status": booking.status,
+
+                "created_at": booking.created_at,
+            })
+
+        return JsonResponse({
+            "success": True,
+            "count": len(data),
+            "bookings": data,
+        }, status=200)
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "message": "You don't have a registered company."
+        }, status=404)
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
 
 
+
+
+# company dashboard
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def company_dashboard(request):
+    try:
+        company = Company.objects.get(owner=request.user)
+
+        pending_requests = CompanyBooking.objects.filter(
+            company=company,
+            status="pending"
+        ).count()
+
+        in_progress = CompanyBooking.objects.filter(
+            company=company,
+            status="accepted"
+        ).count()
+
+        completed_jobs = CompanyBooking.objects.filter(
+            company=company,
+            status="completed"
+        ).count()
+
+        total_revenue = CompanyBookingPayment.objects.filter(
+            company_booking__company=company,
+            payment_status="success"
+        ).aggregate(
+            total=Sum("revenue")
+        )["total"] or Decimal("0.00")
+
+        total_bookings = CompanyBooking.objects.filter(
+            company=company
+        ).count()
+
+        return JsonResponse({
+            "success": True,
+            "dashboard": {
+                "company_name": company.name,
+                "pending_requests": pending_requests,
+                "in_progress": in_progress,
+                "completed_jobs": completed_jobs,
+                "total_bookings": total_bookings,
+                "total_revenue": float(total_revenue),
+            }
+        })
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "message": "Company not found."
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
+
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def accept_booking(request, booking_id):
+    try:
+        company = Company.objects.get(owner=request.user)
+
+        booking = get_object_or_404(
+            CompanyBooking,
+            id=booking_id,
+            company=company
+        )
+
+        if booking.status != "pending":
+            return JsonResponse(
+                {"message": "This booking is no longer pending."},
+                status=400
+            )
+
+        booking.status = "accepted"
+        booking.save()
+
+        # Notify the customer
+        if booking.customer.expo_token:
+            send_push_notification(
+                booking.customer.expo_token,
+                title="Booking Accepted",
+                body=f"{company.name} has accepted your booking request.",
+                data={
+                    "booking_id": booking.id,
+                    "status": "accepted",
+                },
+            )
+
+        return JsonResponse({
+            "message": "Booking accepted successfully.",
+            "status": booking.status
+        })
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "message": "Company not found."
+        }, status=404)
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return JsonResponse({
+            "message": str(e)
+        }, status=500)
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def reject_booking(request, booking_id):
+    try:
+        company = Company.objects.get(owner=request.user)
+
+        booking = get_object_or_404(
+            CompanyBooking,
+            id=booking_id,
+            company=company
+        )
+
+        if booking.status != "pending":
+            return JsonResponse(
+                {"message": "This booking cannot be rejected."},
+                status=400
+            )
+
+        booking.status = "rejected"
+        booking.save()
+
+        # Notify the customer
+        if booking.customer.expo_token:
+            send_push_notification(
+                booking.customer.expo_token,
+                title="Booking Rejected",
+                body=f"{company.name} has declined your booking request.",
+                data={
+                    "booking_id": booking.id,
+                    "status": "rejected",
+                },
+            )
+
+        return JsonResponse({
+            "message": "Booking rejected successfully."
+        })
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "message": "Company not found."
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "message": str(e)
+        }, status=500)

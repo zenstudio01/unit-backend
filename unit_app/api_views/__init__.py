@@ -11,3 +11,5 @@ from .units import *
 from .push_notifications import *
 from .company import *
 from .notifications import *
+from .payments import *
+from .client import *
