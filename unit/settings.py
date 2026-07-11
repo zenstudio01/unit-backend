@@ -80,13 +80,10 @@ SIMPLE_JWT = {
 AUTH_USER_MODEL = 'unit_app.User'
 
 CORS_ALLOW_ALL_ORIGINS = True
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:8081",
-#     "http://localhost:5173",
-#     "https://shopscan-backend.onrender.com",
-#     "https://admin.nexinditechcompany.online",
-#     "https://api.nexinditechcompany.online",
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+    "http://localhost:5173",
+]
 
 ROOT_URLCONF = 'unit.urls'
 
