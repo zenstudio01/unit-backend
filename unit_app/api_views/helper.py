@@ -1,4 +1,6 @@
-from .common_imports import *
+import os
+import requests
+import resend
 
 
 # send push notification to phne

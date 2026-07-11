@@ -186,29 +186,19 @@ def signin(request):
         password = request.data.get("password")
 
         print("Signin attempt:", {"username": username})
-        print("2. Data extracted")
 
         if not username or not password:
             return JsonResponse({"message": "Username and password required"}, status=400)
-        print("3. About to authenticate")
 
         user = authenticate(request, username=username, password=password)
 
-        print("4. Authentication finished")
-
         if not user:
             return JsonResponse({"message": "Invalid credentials"}, status=401)
-        
-        print("5. Email verified check")
 
         if not user.email_verified:
             return JsonResponse({"message": "Verify your email first"}, status=403)
 
-        print("6. Creating JWT")
-
         refresh = RefreshToken.for_user(user)
-
-        print("7. Returning response")
 
         return JsonResponse({
             "message": "Login successful",
