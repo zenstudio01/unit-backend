@@ -51,7 +51,7 @@ def subscribe_plan(request):
     payload = {
         "email": email,
         "amount": amount,
-        "callback_url": "https://fea7-129-222-147-94.ngrok-free.app/payment_callback/",
+        "callback_url": "https://unit-backend-lof1.onrender.com/payment_callback/",
         "metadata": {
             "user_id": customer.id,
         }
@@ -255,7 +255,7 @@ def book_property(request):
     payload = {
         "email": email,
         "amount": amount,
-        "callback_url": "https://fea7-129-222-147-94.ngrok-free.app/property_booking_payment_callback/",
+        "callback_url": "https://unit-backend-lof1.onrender.com/property_booking_payment_callback/",
         "metadata": {
             "user_id": customer.id,
         }

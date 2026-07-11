@@ -82,7 +82,7 @@ def signup(request):
                 pending_amount=0.0
             )
 
-        link = f"http://192.168.100.12:8000/verify_email?token={token}"
+        link = f"https://unit-backend-lof1.onrender.com/verify_email?token={token}"
 
         send_email(
             email,
@@ -235,7 +235,7 @@ def request_reset(request):
     user.reset_token = token
     user.save()
 
-    link = f"http://192.168.100.12:8000/reset_password?token={token}"
+    link = f"https://unit-backend-lof1.onrender.com/reset_password?token={token}"
 
     send_email(
         email,
