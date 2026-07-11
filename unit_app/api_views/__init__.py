@@ -13,3 +13,5 @@ from .company import *
 from .notifications import *
 from .payments import *
 from .client import *
+from .health import *
+

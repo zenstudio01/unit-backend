@@ -15,9 +15,11 @@ from .api_views.company import *
 from .api_views.notifications import *
 from .api_views.payments import *
 from .api_views.client import *
+from .api_views.health import *
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('health/', health, name='health'),
 
     # auth
     path('send_test_email/', send_test_email, name='send_test_email'),
