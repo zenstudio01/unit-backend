@@ -100,9 +100,16 @@ urlpatterns = [
     path("get_company/<int:company_id>/", get_company, name='get_company'),
     path("book_company/", book_company, name='book_company'),
     path("get_company_bookings/", get_company_bookings, name='get_company_bookings'),
-    path("company_dashboard/", company_dashboard, name='company_dashboard'),
+    # path("company_dashboard/", company_dashboard, name='company_dashboard'),
     path("accept_booking/<int:booking_id>/", accept_booking, name='accept_booking'),
     path("reject_booking/<int:booking_id>/", reject_booking, name='reject_booking'),
+    path("company/company_dashboard/", company_dashboard, name="company_dashboard"),
+    path("company/company_profile/", company_profile, name="company_profile"),
+    path("company/update_company_profile/", update_company_profile, name="update_company_profile"),
+    path("company/company_professionals/", company_professionals, name='company_professionals'),
+    path("company/add_professional/", add_professional, name='add_professional'),
+    path("company/update_professional/<int:id>/", update_professional, name='update_professional'),
+    path("company/delete_professional/<int:id>/", delete_professional, name='delete_professional'),
 
     # notifications
     path("get_notifications/", get_notifications, name='get_notifications'),

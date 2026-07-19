@@ -35,7 +35,7 @@ def signup(request):
             return JsonResponse({"message": "Missing required fields"}, status=400)
 
         if User.objects.filter(username=username).exists():
-            return JsonResponse({"message": "Username already exists"}, status=400)
+            return JsonResponse({"message": "Email already exists"}, status=400)
 
         if User.objects.filter(email=email).exists():
             return JsonResponse({"message": "Email already exists"}, status=400)
@@ -65,16 +65,8 @@ def signup(request):
                 professional_title=professional,
                 years_of_experience=experience,
             )
-        if role == 'company':
-            company_name = data.get("company_name")
-            company_description = data.get("company_description")
-            company = Company.objects.create(
-                owner=user,
-                name=company_name,
-                description=company_description,
-                email=email,
-                phone_number=phone_number,
-            )
+        if role == 'company admin':
+            company = Company.objects.create(owner=user)
             CompanyWallet.objects.create(
                 company=company,
                 amount=0.0,

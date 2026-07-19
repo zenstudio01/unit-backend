@@ -313,10 +313,10 @@ class ProductPayment(models.Model):
 # company model
 class Company(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='companies')
-    name = models.CharField(max_length=255)
-    email = models.EmailField()
-    phone_number = models.CharField(max_length=20)
-    description = models.TextField()
+    name = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
     logo = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
     address = models.TextField(blank=True, null=True)
     website = models.CharField(max_length=255, blank=True, null=True)
@@ -334,6 +334,7 @@ class Company(models.Model):
 # professional model
 class Professional(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional_profile')
+    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='professional_company')
     professional_title = models.CharField(max_length=255)
     years_of_experience = models.PositiveIntegerField()
     bio = models.TextField(blank=True, null=True)
