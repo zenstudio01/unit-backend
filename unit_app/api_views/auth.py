@@ -81,6 +81,8 @@ def signup(request):
                 float_amount=0.0,
                 pending_amount=0.0
             )
+        package = Package.objects.get(name="starter bundle")
+        Subscription.objects.create(user=user, package=package, end_date=timezone.now() + timedelta(days=package.month_days))
 
         link = f"https://unit-backend-lof1.onrender.com/verify_email?token={token}"
 

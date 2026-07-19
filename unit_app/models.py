@@ -32,16 +32,14 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     ROLES = (
-        ("admin", "Admin"),
+        ("super admin", "Super Admin"),
+        ("company admin", "Company Admin"),
         ("property manager", "Property Manager"),
-        ("landlord", "Landlord"),
-        ("caretaker", "Caretaker"),
+        ("accountant", "Accountant"),
+        ("leasing officer", "Leasing Officer"),
+        ("maintenance officer", "Maintenance Officer"),
         ("tenant", "Tenant"),
-        ("service provider", "Service Provider"),
-        ("store owner", "Store Owner"),
-        ("professional", "Professional"),
-        ("company", "Company"),
-        ("client", "Client"),
+        ("landlord", "Landlord"),
     )
     full_name = models.CharField(max_length=100)
     role = models.CharField(max_length=20, choices=ROLES)
@@ -96,7 +94,7 @@ class Package(models.Model):
 class Subscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='subscriptions')
-    start_date = models.DateTimeField()
+    start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField()
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -109,8 +107,10 @@ class Property(models.Model):
     PROPERTY_TYPES = [
         ('apartment', 'Apartment'),
         ('house', 'House'),
-        ('condo', 'Condo'),
-        ('townhouse', 'Townhouse'),
+        ('office', 'Office'),
+        ('mall', 'Mall'),
+        ('warehouse', 'Warehouse'),
+        ('hostel', 'Hostel'),
     ]
 
     STATUS_CHOICES = [
@@ -124,6 +124,7 @@ class Property(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     property_type = models.CharField(max_length=20, choices=PROPERTY_TYPES)
+    amenities = models.JSONField(default=list) 
     address = models.CharField(max_length=255)
     legal_plot_number = models.CharField(max_length=100)
     city = models.CharField(max_length=100)
@@ -146,14 +147,16 @@ class Unit(models.Model):
         ('occupied', 'Occupied'),
         ('under_maintenance', 'Under Maintenance'),
     ]
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
     name = models.CharField(max_length=255)
     description = models.TextField()
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
-    price_per_month = models.DecimalField(max_digits=10, decimal_places=2)
+    rent = models.DecimalField(max_digits=10, decimal_places=2)
+    deposit = models.DecimalField(max_digits=10, decimal_places=2)
     bedrooms = models.PositiveIntegerField()
     bathrooms = models.PositiveIntegerField()
     max_guests = models.PositiveIntegerField()
-    amenities = models.JSONField(default=list)  # Store as JSON array
+    water_meter = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    electricity_meter = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     status = models.CharField(max_length=20, choices=Property.STATUS_CHOICES, default='available')
     images = models.JSONField(default=list)  # Store image URLs as JSON array
     is_featured = models.BooleanField(default=False)
@@ -166,8 +169,10 @@ class Unit(models.Model):
 class Tenant(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tenant_profile')
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='tenants')
-    lease_start_date = models.DateField()
-    lease_end_date = models.DateField()
+    emergency_contact = models.CharField(max_length=30, blank=True, null=True)
+    lease_start_date = models.DateTimeField(auto_now_add=True)
+    lease_end_date = models.DateTimeField()
+    id_number = models.CharField(max_length=50, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

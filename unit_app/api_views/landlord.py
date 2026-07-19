@@ -52,60 +52,38 @@ def landlord_list(request):
 # -------------------------------------------------------------
 # 2. CREATE LANDLORD PROFILE & MAP INITIAL BUILDINGS
 # -------------------------------------------------------------
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def landlord_create(request):
-    data = request.data
-    name = data.get('name')
-    email = data.get('email')
-    phone = data.get('phone_number')
-    commission = float(data.get('commission_rate', 10))
-    assigned_props_input = data.get('assigned_properties', '')
+def add_landlord(request):
 
-    if not name or not email:
-        return Response({"message": "Legal Name and Profile Email are required parameters."}, status=status.HTTP_400_BAD_REQUEST)
+    owner = request.user
 
-    if User.objects.filter(email__iexact=email).exists():
-        return Response({"message": "An account profile with this email address already exists."}, status=status.HTTP_400_BAD_REQUEST)
+    full_name = request.data.get("name")
+    email = request.data.get("email")
+    phone_number = request.data.get("phone_number")
+    commission_rate = request.data.get("commission_rate")
+    property_id = request.data.get("property_id")
 
-    # Instantiate the Landlord profile entry into the main User Identity table
-    landlord_user = User.objects.create(
-        username=email,
-        full_name=name,
-        email=email,
-        phone_number=phone,
-        role='landlord',
-        is_active=True,
-        is_verified=True
+    property = Property.objects.get(
+        id=property_id,
+        owner=owner
     )
-    
-    # Custom property field handling if extended on your user profile model:
-    if hasattr(landlord_user, 'commission_rate'):
-        landlord_user.commission_rate = commission
-        landlord_user.save()
 
-    # If initial property text allocations are declared, parse and map owners
-    properties_mapped = 0
-    if assigned_props_input:
-        prop_names = [p.strip() for p in assigned_props_input.split(',') if p.strip()]
-        for p_name in prop_names:
-            # Check for existing unmatched properties or initialize a skeletal placeholder
-            Property.objects.update_or_create(
-                name__iexact=p_name,
-                defaults={'landlord': landlord_user, 'owner': request.user}
-            )
-            properties_mapped += 1
+    landlord = User.objects.create_user(
+        username=email,
+        full_name=full_name,
+        email=email,
+        phone_number=phone_number,
+        role="landlord",
+        password="12345678"
+    )
+
+    property.landlord = landlord
+    property.save()
 
     return Response({
-        "id": landlord_user.id,
-        "name": landlord_user.full_name,
-        "email": landlord_user.email,
-        "phone_number": landlord_user.phone_number,
-        "properties_count": properties_mapped,
-        "total_units": 0,
-        "commission_rate": commission,
-        "last_payout": "KES 0"
-    }, status=status.HTTP_201_CREATED)
+        "message": "Landlord added successfully."
+    })
 
 
 # -------------------------------------------------------------
@@ -127,3 +105,303 @@ def landlord_process_payout(request, pk):
         }, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({"message": "Target landlord entity profile could not be found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def landlord_dashboard(request):
+
+    landlord = request.user
+
+    properties = Property.objects.filter(landlord=landlord)
+
+    property_count = properties.count()
+
+    units = Unit.objects.filter(property__landlord=landlord)
+
+    unit_count = units.count()
+
+    occupied_units = units.filter(status="occupied").count()
+
+    available_units = units.filter(status="available").count()
+
+    maintenance_units = units.filter(
+        status="under_maintenance"
+    ).count()
+
+    tenants = Tenant.objects.filter(
+        unit__property__landlord=landlord
+    )
+
+    tenant_count = tenants.count()
+
+    current_month = timezone.now().month
+    current_year = timezone.now().year
+
+    paid_this_month = RentPayment.objects.filter(
+        tenant__unit__property__landlord=landlord,
+        is_paid=True,
+        payment_date__month=current_month,
+        payment_date__year=current_year,
+    )
+
+    rent_collected = (
+        paid_this_month.aggregate(
+            total=Sum("amount")
+        )["total"]
+        or Decimal("0.00")
+    )
+
+    pending_rent = (
+        RentPayment.objects.filter(
+            tenant__unit__property__landlord=landlord,
+            is_paid=False,
+        ).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0.00")
+    )
+
+    occupancy_rate = 0
+
+    if unit_count > 0:
+        occupancy_rate = round(
+            (occupied_units / unit_count) * 100,
+            1,
+        )
+
+    recent_payments = []
+
+    payments = (
+        RentPayment.objects.filter(
+            tenant__unit__property__landlord=landlord
+        )
+        .select_related(
+            "tenant",
+            "tenant__user",
+            "tenant__unit",
+        )
+        .order_by("-payment_date")[:5]
+    )
+
+    for payment in payments:
+        recent_payments.append({
+            "id": payment.id,
+            "tenant": payment.tenant.user.full_name,
+            "property": payment.tenant.unit.property.name,
+            "unit": payment.tenant.unit.name,
+            "amount": float(payment.amount),
+            "date": payment.payment_date.strftime("%d %b %Y"),
+            "status": "Paid" if payment.is_paid else "Pending",
+        })
+
+    property_overview = []
+
+    for property in properties:
+
+        total_units = property.units.count()
+
+        occupied = property.units.filter(
+            status="occupied"
+        ).count()
+
+        monthly_income = (
+            RentPayment.objects.filter(
+                tenant__unit__property=property,
+                is_paid=True,
+                payment_date__month=current_month,
+                payment_date__year=current_year,
+            ).aggregate(total=Sum("amount"))["total"]
+            or Decimal("0.00")
+        )
+
+        property_overview.append({
+            "id": property.id,
+            "name": property.name,
+            "units": total_units,
+            "occupied": occupied,
+            "income": float(monthly_income),
+        })
+
+    return Response({
+
+        "summary": {
+
+            "properties": property_count,
+
+            "units": unit_count,
+
+            "occupied_units": occupied_units,
+
+            "available_units": available_units,
+
+            "maintenance_units": maintenance_units,
+
+            "tenants": tenant_count,
+
+            "rent_collected": float(rent_collected),
+
+            "pending_rent": float(pending_rent),
+
+            "occupancy_rate": occupancy_rate,
+
+        },
+
+        "recent_payments": recent_payments,
+
+        "properties": property_overview,
+
+    })
+
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def landlord_analytics(request):
+    user = request.user
+
+    properties = Property.objects.filter(landlord=user)
+
+    units = Unit.objects.filter(property__in=properties)
+
+    tenants = Tenant.objects.filter(unit__property__in=properties)
+
+    payments = RentPayment.objects.filter(
+        tenant__in=tenants,
+        is_paid=True
+    )
+
+    total_units = units.count()
+    occupied_units = units.filter(status="occupied").count()
+    available_units = units.filter(status="available").count()
+
+    occupancy_rate = 0
+
+    if total_units:
+        occupancy_rate = round(
+            (occupied_units / total_units) * 100,
+            2
+        )
+
+    total_revenue = payments.aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    pending_rent = RentPayment.objects.filter(
+        tenant__in=tenants,
+        is_paid=False
+    ).aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    collection_rate = 0
+
+    if total_revenue + pending_rent:
+        collection_rate = round(
+            (total_revenue /
+             (total_revenue + pending_rent)) * 100,
+            2
+        )
+
+    monthly = (
+        payments
+        .annotate(month=TruncMonth("payment_date"))
+        .values("month")
+        .annotate(amount=Sum("amount"))
+        .order_by("month")
+    )
+
+    monthly_revenue = [
+        {
+            "month": item["month"].strftime("%b"),
+            "amount": float(item["amount"])
+        }
+        for item in monthly
+    ]
+
+    property_revenue = []
+
+    for property in properties:
+
+        income = (
+            RentPayment.objects.filter(
+                tenant__unit__property=property,
+                is_paid=True
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
+
+        property_revenue.append({
+            "property": property.name,
+            "income": float(income)
+        })
+
+    tenant_status = [
+        {
+            "status": "Paid",
+            "value": RentPayment.objects.filter(
+                tenant__in=tenants,
+                is_paid=True
+            ).count()
+        },
+        {
+            "status": "Pending",
+            "value": RentPayment.objects.filter(
+                tenant__in=tenants,
+                is_paid=False
+            ).count()
+        }
+    ]
+
+    top_properties = []
+
+    for property in properties:
+
+        total = property.units.count()
+
+        occupied = property.units.filter(
+            status="occupied"
+        ).count()
+
+        income = (
+            RentPayment.objects.filter(
+                tenant__unit__property=property,
+                is_paid=True
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
+
+        rate = 0
+
+        if total:
+            rate = round((occupied / total) * 100, 2)
+
+        top_properties.append({
+            "name": property.name,
+            "occupancy": rate,
+            "income": float(income)
+        })
+
+    return JsonResponse({
+
+        "summary": {
+            "total_revenue": float(total_revenue),
+            "pending_rent": float(pending_rent),
+            "occupancy_rate": occupancy_rate,
+            "collection_rate": collection_rate
+        },
+
+        "monthly_revenue": monthly_revenue,
+
+        "property_revenue": property_revenue,
+
+        "tenant_status": tenant_status,
+
+        "top_properties": sorted(
+            top_properties,
+            key=lambda x: x["income"],
+            reverse=True
+        )
+
+    })

@@ -19,12 +19,12 @@ def get_my_units(request):
                 "description": unit.description,
                 "property_id": unit.property.id,
                 "property_name": unit.property.name,
-                "price_per_month": float(unit.price_per_month),
+                "price_per_month": float(unit.rent),
                 "bedrooms": unit.bedrooms,
                 "bathrooms": unit.bathrooms,
                 "max_guests": unit.max_guests,
                 "status": unit.status,
-                "amenities": unit.amenities,
+                "amenities": unit.property.amenities,
                 "images": unit.images,
                 "is_featured": unit.is_featured,
                 "created_at": unit.created_at,
@@ -131,7 +131,7 @@ def get_available_units(request):
                 "property_type": unit.property.property_type,
                 "location": unit.property.address,
 
-                "price": unit.price_per_month,
+                "price": unit.rent,
 
                 "bedrooms": unit.bedrooms,
                 "bathrooms": unit.bathrooms,
@@ -143,7 +143,7 @@ def get_available_units(request):
 
                 "images": unit.images,
 
-                "amenities": unit.amenities,
+                "amenities": unit.property.amenities,
             })
 
         return JsonResponse({

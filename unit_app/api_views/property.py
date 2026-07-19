@@ -25,7 +25,7 @@ def property_list(request):
         # Dynamically aggregate real-time counts and yield statistics
         total_units = prop.units.count()
         occupied_units = prop.units.filter(status='occupied').count()
-        monthly_rent_sum = prop.units.aggregate(total=Sum('price_per_month'))['total'] or 0
+        monthly_rent_sum = prop.units.aggregate(total=Sum('rent'))['total'] or 0
 
         # Format choice metrics to match frontend UI string states safely
         ui_property_type = prop.property_type.title()
@@ -57,6 +57,8 @@ def property_create(request):
     location = data.get('location')
     property_type_input = data.get('property_type', 'Residential').lower()
     description = data.get('description', '')
+    rent = float(data.get('rent', 0))
+    deposit = float(data.get('deposit', 0))
     total_units_count = int(data.get('total_units', 0))
     images = request.FILES.getlist("images")
 
@@ -101,7 +103,8 @@ def property_create(request):
                 name=f"Unit {i:02d}",
                 description="System shell initialization asset slot placeholder.",
                 property=property_asset,
-                price_per_month=0.00,
+                rent=rent,
+                deposit=deposit,
                 bedrooms=1,
                 bathrooms=1,
                 max_guests=2,
@@ -121,3 +124,45 @@ def property_create(request):
         "monthly_rent": "KES 0",
         "description": property_asset.description
     }, status=status.HTTP_201_CREATED)
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_properties_with_units(request):
+
+    properties = (
+        Property.objects.filter(owner=request.user)
+        .prefetch_related("units")
+        .order_by("name")
+    )
+
+    data = []
+
+    for property in properties:
+        units = []
+
+        for unit in property.units.filter(status="available"):
+            units.append({
+                "id": unit.id,
+                "name": unit.name,
+                "rent": float(unit.rent),
+                "deposit": float(unit.deposit),
+                "bedrooms": unit.bedrooms,
+                "bathrooms": unit.bathrooms,
+                "status": unit.status,
+            })
+
+        data.append({
+            "id": property.id,
+            "name": property.name,
+            "property_type": property.property_type,
+            "address": property.address,
+            "city": property.city,
+            "status": property.status,
+            "units": units,
+        })
+
+    return Response(data)
+

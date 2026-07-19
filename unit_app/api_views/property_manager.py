@@ -242,3 +242,132 @@ def get_payments(request):
     except Exception as e:
         print(f"Error: {e}")
         return Response({"success": False, "message": str(e)}, status=500)
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def property_manager_profile(request):
+    user = request.user
+
+    # Active Subscription
+    subscription = (
+        Subscription.objects
+        .select_related("package")
+        .filter(user=user, is_active=True)
+        .order_by("-created_at")
+        .first()
+    )
+
+    properties = Property.objects.filter(owner=user)
+
+    property_count = properties.count()
+
+    unit_count = Unit.objects.filter(property__owner=user).count()
+
+    tenant_count = Tenant.objects.filter(
+        unit__property__owner=user
+    ).count()
+
+    landlord_count = (
+        properties.exclude(landlord=None)
+        .values("landlord")
+        .distinct()
+        .count()
+    )
+
+    if subscription:
+        remaining_days = max(
+            (subscription.end_date.date() - timezone.now().date()).days,
+            0,
+        )
+
+        package = subscription.package
+
+        subscription_data = {
+            "package": package.name.title(),
+            "status": "Active" if subscription.is_active else "Expired",
+            "billing_cycle": "Monthly",
+            "monthly_price": float(package.monthly_price),
+            "yearly_price": float(package.yearly_price),
+            "expires_at": subscription.end_date.strftime("%d %B %Y"),
+            "remaining_days": remaining_days,
+
+            "limits": {
+                "properties": package.number_of_units,
+                "units": package.number_of_units,
+            },
+
+            "usage": {
+                "properties": property_count,
+                "units": unit_count,
+            },
+
+            "features": [
+                "Property Management",
+                "Unit Management",
+                "Tenant Management",
+                "Rent Collection",
+
+                *(
+                    ["M-Pesa Daraja"]
+                    if package.mpesa_daraja
+                    else []
+                ),
+
+                *(
+                    ["Email Notifications"]
+                    if package.email_notifications
+                    else []
+                ),
+
+                f"Logs ({package.logs_duration} Days)"
+            ]
+        }
+
+    else:
+
+        subscription_data = {
+            "package": "No Active Package",
+            "status": "Inactive",
+            "billing_cycle": "",
+            "monthly_price": 0,
+            "yearly_price": 0,
+            "expires_at": "",
+            "remaining_days": 0,
+            "limits": {
+                "properties": 0,
+                "units": 0,
+            },
+            "usage": {
+                "properties": property_count,
+                "units": unit_count,
+            },
+            "features": []
+        }
+
+    return Response({
+
+        "user": {
+            "id": user.id,
+            "name": user.full_name,
+            "username": user.username,
+            "email": user.email,
+            "phone_number": user.phone_number,
+            "profile_image": user.profile_image,
+            "role": user.role.title(),
+            "location": user.location,
+            "joined": user.created_at.strftime("%d %B %Y"),
+            "verified": user.is_verified,
+        },
+
+        "statistics": {
+            "properties": property_count,
+            "units": unit_count,
+            "tenants": tenant_count,
+            "landlords": landlord_count,
+        },
+
+        "subscription": subscription_data,
+    })

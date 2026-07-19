@@ -58,7 +58,7 @@ def get_tenants(request):
             "property_name": tenant.unit.property.name,
             "unit_number": tenant.unit.name,
 
-            "rent_amount": tenant.unit.price_per_month,
+            "rent_amount": tenant.unit.rent,
 
             "status": payment_status,
         })
@@ -82,10 +82,13 @@ def add_tenant(request):
     unit_id = request.data.get("unit_id")
     lease_start = request.data.get("lease_start", "2026-06-02")
     lease_end = request.data.get("lease_end","2027-06-02")
+    property_id = request.data.get("property")
+    unit = request.data.get("unit")
 
     try:
-        user = User.objects.create(full_name=full_name, email=email, username=email, password="123456", phone_number=phone_number, role="tenant", is_verified=False)
-        unit = Unit.objects.get(id=1)
+        user = User.objects.create(full_name=full_name, email=email, username=email, password="123456", phone_number=phone_number, role="tenant", is_verified=True)
+        property = Property.objects.get(id=property_id)
+        unit = Unit.objects.get(property=property, id=unit)
 
         if Tenant.objects.filter(user=user).exists():
             return Response({"success": False, "message": "Tenant already exists."})
@@ -93,22 +96,19 @@ def add_tenant(request):
         tenant = Tenant.objects.create(
             user=user,
             unit=unit,
-            lease_start_date=lease_start,
-            lease_end_date=lease_end,
+            lease_end_date=timezone.now() + timedelta(days=30),
             is_active=True
         )
 
         unit.status = "occupied"
         unit.save()
 
-        return Response({"success": True, "message": "Tenant onboarded successfully."})
+        return Response({"success": True, "message": "Tenant added successfully."})
 
     except User.DoesNotExist:
-
         return Response({"success": False, "message": "User not found."})
 
     except Unit.DoesNotExist:
-
         return Response({"success": False, "message": "Unit not found."})
 
 

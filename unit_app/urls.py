@@ -43,6 +43,7 @@ urlpatterns = [
     path('get_tenants/', get_tenants, name='get_tenants'),
     path('add_tenant/', add_tenant, name='add_tenant'),
     path('request_rent/', request_rent, name='request_rent'),
+    path("get_properties_with_units/", get_properties_with_units, name="get_properties_with_units"),
 
     # admin - users
     path('admin/users/', admin_users_list, name='admin_users_list'),
@@ -57,8 +58,10 @@ urlpatterns = [
 
     # landlord
     path('landlords/', landlord_list, name='landlord_list'),
-    path('landlords/create/', landlord_create, name='landlord_create'),
+    path('landlords/add_landlord/', add_landlord, name='add_landlord'),
     path('landlords/<int:pk>/payout/', landlord_process_payout, name='landlord_payout'),
+    path("landlords/landlord_dashboard/", landlord_dashboard, name="landlord_dashboard"),
+    path("landlords/landlord_analytics/", landlord_analytics, name="landlord_analytics"),
 
     # subscription
     path('packages/', get_packages, name='get_packages'),
@@ -79,6 +82,7 @@ urlpatterns = [
     path("prop/dashboard_statistics/", dashboard_statistics, name='dashboard_statistics'),
     path("prop/payment_summary/", payment_summary, name='payment_summary'),
     path("prop/get_payments/", get_payments, name='get_payments'),
+    path("property_manager_profile/", property_manager_profile, name="property_manager_profile"),
 
     # units
     path("units/get_my_units/", get_my_units, name="get_my_units"),
