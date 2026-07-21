@@ -154,3 +154,288 @@ def request_rent(request):
             "message": "Tenant not found."
 
         }, status=404)
+
+
+# get tenant dashboard data
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def tenant_dashboard(request):
+    user = request.user
+
+    try:
+        tenant = Tenant.objects.select_related(
+            "unit",
+            "unit__property"
+        ).get(user=user)
+
+    except Tenant.DoesNotExist:
+        return JsonResponse(
+            {
+                "message": "Tenant profile not found."
+            },
+            status=404
+        )
+
+    property = tenant.unit.property
+
+    # Latest unpaid rent
+    unpaid_payment = (
+        RentPayment.objects
+        .filter(
+            tenant=tenant,
+            is_paid=False
+        )
+        .order_by("payment_date")
+        .first()
+    )
+
+    current_rent = (
+        float(unpaid_payment.amount)
+        if unpaid_payment
+        else 0
+    )
+
+    next_due_date = (
+        unpaid_payment.payment_date.strftime("%d %b %Y")
+        if unpaid_payment
+        else "No pending rent"
+    )
+
+    # Outstanding balance
+    balance = (
+        RentPayment.objects.filter(
+            tenant=tenant,
+            is_paid=False
+        ).aggregate(
+            total=Sum("amount")
+        )["total"]
+        or 0
+    )
+
+    # Pending maintenance requests
+    pending_requests = 0
+
+    if "MaintenanceRequest" in globals():
+        pending_requests = MaintenanceRequest.objects.filter(
+            tenant=tenant,
+            status="pending"
+        ).count()
+
+    # Latest announcements
+    announcements = []
+
+    if "Announcement" in globals():
+
+        latest = (
+            Announcement.objects
+            .filter(property=property)
+            .order_by("-created_at")[:5]
+        )
+
+        announcements = [
+            {
+                "id": item.id,
+                "title": item.title,
+                "message": item.message,
+                "date": item.created_at.strftime("%d %b %Y"),
+            }
+            for item in latest
+        ]
+
+    return JsonResponse(
+        {
+            "dashboard": {
+                "tenant_name": tenant.user.full_name,
+                "property_name": property.name,
+                "unit_name": tenant.unit.name,
+                "current_rent": current_rent,
+                "balance": float(balance),
+                "next_due_date": next_due_date,
+                "pending_requests": pending_requests,
+                "announcements": announcements,
+            }
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def tenant_announcements(request):
+    user = request.user
+
+    try:
+        tenant = Tenant.objects.select_related(
+            "unit",
+            "unit__property"
+        ).get(user=user)
+
+    except Tenant.DoesNotExist:
+        return JsonResponse(
+            {
+                "message": "Tenant profile not found."
+            },
+            status=404
+        )
+
+    announcements = (
+        Announcement.objects.filter(
+            is_active=True
+        ).filter(
+            Q(target="all") |
+            Q(target="property", property=tenant.unit.property) |
+            Q(target="unit", unit=tenant.unit)
+        ).order_by("-created_at")
+    )
+
+    data = []
+
+    for announcement in announcements:
+        data.append({
+            "id": announcement.id,
+            "title": announcement.title,
+            "message": announcement.message,
+            "target": announcement.target,
+            "date": announcement.created_at.strftime("%d %b %Y"),
+            "created_by": announcement.created_by.full_name,
+        })
+
+    return JsonResponse({
+        "announcements": data
+    })
+
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_maintenance_request(request):
+    try:
+        tenant = Tenant.objects.filter(user=request.user).first()
+
+        if not tenant:
+            return JsonResponse({
+                "success": False,
+                "message": "Tenant profile not found."
+            }, status=404)
+
+        title = request.data.get("title")
+        description = request.data.get("description")
+        priority = request.data.get("priority", "medium")
+
+        if not title or not description:
+            return JsonResponse({
+                "success": False,
+                "message": "Title and description are required."
+            }, status=400)
+
+        maintenance = MaintenanceRequest.objects.create(
+            tenant=tenant,
+            property=tenant.unit.property,
+            unit=tenant.unit,
+            title=title,
+            description=description,
+            priority=priority
+        )
+
+        return JsonResponse({
+            "success": True,
+            "message": "Maintenance request submitted successfully.",
+            "request": {
+                "id": maintenance.id,
+                "title": maintenance.title,
+                "description": maintenance.description,
+                "priority": maintenance.priority,
+                "status": maintenance.status,
+                "created_at": maintenance.created_at
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_my_maintenance_requests(request):
+    tenant = Tenant.objects.filter(user=request.user).first()
+
+    if not tenant:
+        return JsonResponse({
+            "success": False,
+            "message": "Tenant profile not found."
+        }, status=404)
+
+    requests = MaintenanceRequest.objects.filter(
+        tenant=tenant
+    ).order_by("-created_at")
+
+    data = []
+
+    for item in requests:
+        data.append({
+            "id": item.id,
+            "title": item.title,
+            "description": item.description,
+            "priority": item.priority,
+            "status": item.status,
+            "property": item.property.name,
+            "unit": item.unit.name,
+            "created_at": item.created_at
+        })
+
+    return JsonResponse({
+        "success": True,
+        "requests": data
+    })
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def tenant_rent_payments(request):
+    try:
+        tenant = Tenant.objects.filter(user=request.user).first()
+
+        if not tenant:
+            return JsonResponse({
+                "success": False,
+                "message": "Tenant profile not found."
+            }, status=404)
+
+        payments = RentPayment.objects.filter(
+            tenant=tenant
+        ).order_by("-payment_date")
+
+        data = []
+
+        for payment in payments:
+            data.append({
+                "id": payment.id,
+                "amount": float(payment.amount),
+                "payment_date": payment.payment_date.strftime("%d %b %Y"),
+                "receipt_number": payment.receipt_number,
+                "transaction_id": payment.transaction_id,
+                "payment_method": payment.payment_method,
+                "tenant": payment.tenant.user.full_name,
+                "property": payment.tenant.unit.property.name,
+                "unit": payment.tenant.unit.name,
+                "is_paid": payment.is_paid
+            })
+
+        return JsonResponse({
+            "success": True,
+            "payments": data
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
+
+
+

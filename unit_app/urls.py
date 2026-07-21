@@ -16,6 +16,7 @@ from .api_views.notifications import *
 from .api_views.payments import *
 from .api_views.client import *
 from .api_views.health import *
+from .api_views.chat import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -44,6 +45,11 @@ urlpatterns = [
     path('add_tenant/', add_tenant, name='add_tenant'),
     path('request_rent/', request_rent, name='request_rent'),
     path("get_properties_with_units/", get_properties_with_units, name="get_properties_with_units"),
+    path('tenant_dashboard/', tenant_dashboard, name='tenant_dashboard'),
+    path('tenant_announcements/', tenant_announcements, name='tenant_announcements'),
+    path('create_maintenance_request/', create_maintenance_request, name='create_maintenance_request'),
+    path('get_my_maintenance_requests/', get_my_maintenance_requests, name='get_my_maintenance_requests'),
+    path("tenant_rent_payments/", tenant_rent_payments, name='tenant_rent_payments'),
 
     # admin - users
     path('admin/users/', admin_users_list, name='admin_users_list'),
@@ -83,6 +89,8 @@ urlpatterns = [
     path("prop/payment_summary/", payment_summary, name='payment_summary'),
     path("prop/get_payments/", get_payments, name='get_payments'),
     path("property_manager_profile/", property_manager_profile, name="property_manager_profile"),
+    path("property_manager_maintenance_requests/", property_manager_maintenance_requests, name='property_manager_maintenance_requests'),
+    path("update_maintenance_status/<int:request_id>/", update_maintenance_status, name='update_maintenance_status'),
 
     # units
     path("units/get_my_units/", get_my_units, name="get_my_units"),
@@ -124,6 +132,15 @@ urlpatterns = [
 
     # client
     path("get_user_bookings/", get_user_bookings, name='get_user_bookings'),
+
+    # chat
+    path("send_company_message/", send_company_message, name='send_company_message'),
+    path("company_reply/", company_reply, name='company_reply'),
+    path("company_chat/<int:company_id>/", company_chat, name='company_chat'),
+    path("company_conversations/", company_conversations, name='company_conversations'),
+    path("customer_conversations/", customer_conversations, name='customer_conversations'),
+    path("mark_company_messages_read/", mark_company_messages_read, name='mark_company_messages_read'),
+    path("company_conversation_messages/<int:conversation_id>/", company_conversation_messages, name='company_conversation_messages'),
 
 
 

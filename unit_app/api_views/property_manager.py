@@ -371,3 +371,73 @@ def property_manager_profile(request):
 
         "subscription": subscription_data,
     })
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def property_manager_maintenance_requests(request):
+
+    properties = Property.objects.filter(owner=request.user)
+
+    requests = MaintenanceRequest.objects.filter(
+        property__in=properties
+    ).order_by("-created_at")
+
+    data = []
+
+    for item in requests:
+        data.append({
+            "id": item.id,
+            "tenant": item.tenant.user.full_name,
+            "property": item.property.name,
+            "unit": item.unit.name,
+            "title": item.title,
+            "description": item.description,
+            "priority": item.priority,
+            "status": item.status,
+            "created_at": item.created_at
+        })
+
+    return JsonResponse({
+        "requests": data
+    })
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def update_maintenance_status(request, request_id):
+
+    maintenance = MaintenanceRequest.objects.filter(
+        id=request_id
+    ).first()
+
+    if not maintenance:
+        return JsonResponse({
+            "message": "Maintenance request not found."
+        }, status=404)
+
+    status = request.data.get("status")
+
+    valid_status = [
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled"
+    ]
+
+    if status not in valid_status:
+        return JsonResponse({
+            "message": "Invalid status."
+        }, status=400)
+
+    maintenance.status = status
+    maintenance.save()
+
+    return JsonResponse({
+        "success": True,
+        "message": "Maintenance request updated successfully."
+    })
+
+

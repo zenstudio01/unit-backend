@@ -40,6 +40,7 @@ class User(AbstractUser):
         ("maintenance officer", "Maintenance Officer"),
         ("tenant", "Tenant"),
         ("landlord", "Landlord"),
+        ("client", "Client"),
     )
     full_name = models.CharField(max_length=100)
     role = models.CharField(max_length=20, choices=ROLES)
@@ -220,21 +221,21 @@ class Notification(models.Model):
     def __str__(self):
         return f"{self.user.full_name} - {self.title}"
 
-class MaintenanceRequest(models.Model):
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-    ]
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='maintenance_requests')
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='maintenance_requests')
-    description = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+# class MaintenanceRequest(models.Model):
+#     STATUS_CHOICES = [
+#         ('pending', 'Pending'),
+#         ('in_progress', 'In Progress'),
+#         ('completed', 'Completed'),
+#     ]
+#     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='maintenance_requests')
+#     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='maintenance_requests')
+#     description = models.TextField()
+#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.tenant.user.full_name} - {self.unit.name} - {self.status}"
+#     def __str__(self):
+#         return f"{self.tenant.user.full_name} - {self.unit.name} - {self.status}"
 
 class Store(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stores')
@@ -325,6 +326,7 @@ class Company(models.Model):
     country = models.CharField(max_length=100, blank=True, null=True, default="Kenya")
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     is_available = models.BooleanField(default=True)
+    is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -399,6 +401,87 @@ class CompanyWallet(models.Model):
 
     def __str__(self):
         return f"#{self.id} Company {self.company.name} {self.amount}"
+
+
+# conversation models
+class CompanyConversation(models.Model):
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="company_conversations")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="conversations")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.customer.full_name} - {self.company.name}"
+
+
+class CompanyMessage(models.Model):
+    conversation = models.ForeignKey(CompanyConversation, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="company_messages")
+    message = models.TextField()
+    image = models.URLField(blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return self.message[:40]
+
+
+class MaintenanceRequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("emergency", "Emergency"),
+    ]
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="maintenance_requests")
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="maintenance_requests")
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="maintenance_requests")
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="medium")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    images = models.JSONField(default=list, blank=True)
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_maintenance_requests")
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.unit.name} - {self.title}"
+
+
+class Announcement(models.Model):
+    TARGET_CHOICES = [
+        ("all", "All Tenants"),
+        ("property", "Property"),
+        ("unit", "Unit"),
+    ]
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="announcements")
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="announcements", null=True, blank=True)
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="announcements", null=True, blank=True)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    target = models.CharField(max_length=20, choices=TARGET_CHOICES, default="property")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+
+
+
+
+
 
 class PropertyBooking(models.Model):
     STATUS = [

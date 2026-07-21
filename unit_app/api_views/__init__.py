@@ -14,4 +14,5 @@ from .notifications import *
 from .payments import *
 from .client import *
 from .health import *
+from .chat import *
 
