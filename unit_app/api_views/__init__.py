@@ -15,4 +15,6 @@ from .payments import *
 from .client import *
 from .health import *
 from .chat import *
+from .maintenance import *
+from .announcements import *
 

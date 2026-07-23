@@ -17,6 +17,8 @@ from .api_views.payments import *
 from .api_views.client import *
 from .api_views.health import *
 from .api_views.chat import *
+from .api_views.maintenance import *
+from .api_views.announcements import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -50,6 +52,7 @@ urlpatterns = [
     path('create_maintenance_request/', create_maintenance_request, name='create_maintenance_request'),
     path('get_my_maintenance_requests/', get_my_maintenance_requests, name='get_my_maintenance_requests'),
     path("tenant_rent_payments/", tenant_rent_payments, name='tenant_rent_payments'),
+    path("tenant_profile/", tenant_profile, name="tenant_profile"),
 
     # admin - users
     path('admin/users/', admin_users_list, name='admin_users_list'),
@@ -71,6 +74,9 @@ urlpatterns = [
 
     # subscription
     path('packages/', get_packages, name='get_packages'),
+    path("property_manager_subscribe_plan/", property_manager_subscribe_plan, name='subscribe_plan'),
+    path("property_manager_verify_subscription/<str:reference>/", property_manager_verify_subscription, name='verify_subscription'),
+    path("property_manager_subscription_callback/", property_manager_subscription_callback, name='subscription_callback'),
 
     # store
     path('get_stores/', get_stores, name='get_stores'),
@@ -91,6 +97,15 @@ urlpatterns = [
     path("property_manager_profile/", property_manager_profile, name="property_manager_profile"),
     path("property_manager_maintenance_requests/", property_manager_maintenance_requests, name='property_manager_maintenance_requests'),
     path("update_maintenance_status/<int:request_id>/", update_maintenance_status, name='update_maintenance_status'),
+    path("property_manager_maintenance_requests/", property_manager_maintenance_requests, name='property_manager_maintenance_requests'),
+    path("update_maintenance_status/<int:request_id>/", update_maintenance_status, name='update_maintenance_status'),
+    path("get_maintenance_requests/", get_maintenance_requests, name="get_maintenance_requests"),
+
+    # property manager announcements
+    path("create_announcement/", create_announcement, name='create_announcement'),
+    path("get_announcements/", get_announcements, name='get_announcements'),
+    path("update_announcement/<int:announcement_id>/", update_announcement, name='update_announcement'),
+    path("delete_announcement/<int:announcement_id>/", delete_announcement, name='delete_announcement'),
 
     # units
     path("units/get_my_units/", get_my_units, name="get_my_units"),
@@ -141,6 +156,8 @@ urlpatterns = [
     path("customer_conversations/", customer_conversations, name='customer_conversations'),
     path("mark_company_messages_read/", mark_company_messages_read, name='mark_company_messages_read'),
     path("company_conversation_messages/<int:conversation_id>/", company_conversation_messages, name='company_conversation_messages'),
+
+
 
 
 

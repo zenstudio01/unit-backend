@@ -41,15 +41,96 @@ def get_packages(request):
 
 
 
-# verify subscription payment
+
+
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY")
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def verify_subscription_payment(request):
+def property_manager_subscribe_plan(request):
 
-    reference = request.data.get("reference")
+    user = request.user
+
+    email = request.data.get("email")
+    package_id = request.data.get("package_id")
+    billing_cycle = request.data.get("billing_cycle", "monthly")
+
+    if not email or not package_id:
+        return Response(
+            {"message": "Email and package are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        package = Package.objects.get(id=package_id)
+
+    except Package.DoesNotExist:
+        return Response(
+            {"message": "Package not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if billing_cycle == "monthly":
+        amount = package.monthly_price
+    else:
+        amount = package.yearly_price
 
     headers = {
-        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "email": email,
+        "amount": int(amount * 100),
+        "callback_url": "http://192.168.100.12:8000/property_manager_subscription_callback/",
+        "metadata": {
+            "user_id": user.id,
+            "package_id": package.id,
+            "billing_cycle": billing_cycle,
+        },
+    }
+
+    response = requests.post(
+        "https://api.paystack.co/transaction/initialize",
+        json=payload,
+        headers=headers,
+    )
+
+    data = response.json()
+
+    if data.get("status"):
+
+        reference = data["data"]["reference"]
+
+        SubscriptionPayment.objects.create(
+            user=user,
+            package=package,
+            amount=amount,
+            reference=reference,
+            payment_method="paystack",
+            status="pending",
+        )
+
+        return Response({
+            "authorization_url": data["data"]["authorization_url"],
+            "reference": reference,
+        })
+
+    return Response(
+        {
+            "message": "Unable to initialize payment.",
+            "paystack": data,
+        },
+        status=400,
+    )
+
+
+
+@api_view(["GET"])
+def property_manager_verify_subscription(reference):
+
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"
     }
 
     response = requests.get(
@@ -62,42 +143,153 @@ def verify_subscription_payment(request):
     if not result["status"]:
         return Response(
             {"message": "Verification failed"},
-            status=400
+            status=400,
         )
 
-    payment = result["data"]
+    payment_data = result["data"]
 
-    if payment["status"] != "success":
+    if payment_data["status"] != "success":
         return Response(
-            {"message": "Payment not successful"},
-            status=400
+            {"message": "Payment unsuccessful"},
+            status=400,
         )
 
-    metadata = payment["metadata"]
-
-    package = Package.objects.get(
-        id=metadata["package_id"]
+    payment = SubscriptionPayment.objects.get(
+        reference=reference
     )
 
-    if metadata["billing_cycle"] == "monthly":
-        end_date = timezone.now() + timedelta(
-            days=package.month_days
-        )
-    else:
-        end_date = timezone.now() + timedelta(
-            days=package.year_days
-        )
-
-    Subscription.objects.update_or_create(
-        user=request.user,
-        defaults={
-            "package": package,
-            "start_date": timezone.now(),
-            "end_date": end_date,
-            "is_active": True,
-        },
-    )
+    payment.status = "success"
+    payment.save()
 
     return Response({
-        "message": "Subscription activated successfully."
+        "message": "Payment verified."
     })
+
+
+@api_view(["GET"])
+def property_manager_subscription_callback(request):
+
+    reference = request.GET.get("reference")
+
+    if not reference:
+        return Response(
+            {"message": "Reference missing"},
+            status=400,
+        )
+
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"
+    }
+
+    response = requests.get(
+        f"https://api.paystack.co/transaction/verify/{reference}",
+        headers=headers,
+    )
+
+    result = response.json()
+
+    if not result["status"]:
+        return Response(
+            {"message": "Verification failed"},
+            status=400,
+        )
+
+    transaction = result["data"]
+
+    if transaction["status"] != "success":
+        return Response(
+            {"message": "Payment failed"},
+            status=400,
+        )
+
+    try:
+
+        payment = SubscriptionPayment.objects.get(
+            reference=reference
+        )
+
+        if payment.status == "success":
+            return Response({
+                "message": "Already processed."
+            })
+
+        payment.status = "success"
+        payment.save()
+
+        package = payment.package
+
+        if transaction["metadata"]["billing_cycle"] == "monthly":
+            expires = timezone.now() + timedelta(
+                days=package.month_days
+            )
+        else:
+            expires = timezone.now() + timedelta(
+                days=package.year_days
+            )
+
+        Subscription.objects.update_or_create(
+
+            user=payment.user,
+
+            defaults={
+
+                "package": package,
+
+                "start_date": timezone.now(),
+
+                "end_date": expires,
+
+                "is_active": True,
+
+            },
+        )
+
+        Notification.objects.create(
+
+            user=payment.user,
+
+            title="Subscription Activated",
+
+            message=f"Your {package.name} subscription has been activated successfully.",
+
+            msg_type="subscription",
+
+        )
+
+        send_push_notification(
+
+            payment.user.expo_token,
+
+            title="Subscription Activated",
+
+            body=f"Your {package.name} subscription is now active.",
+
+            data={
+
+                "screen": "Subscription",
+
+            },
+
+        )
+
+        return render(
+            request,
+            "subscription/payment_success.html",
+            {
+                "reference": reference,
+                "package_name": subscription.package.name,
+                "billing_cycle": subscription.billing_cycle.title(),
+                "amount": payment.amount,
+            }
+        )
+
+    except SubscriptionPayment.DoesNotExist:
+
+        return Response(
+            {"message": "Payment record not found."},
+            status=404,
+        )
+
+
+
+

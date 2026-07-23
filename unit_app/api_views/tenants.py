@@ -306,6 +306,7 @@ def tenant_announcements(request):
 
 
 
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_maintenance_request(request):
@@ -321,6 +322,7 @@ def create_maintenance_request(request):
         title = request.data.get("title")
         description = request.data.get("description")
         priority = request.data.get("priority", "medium")
+        category = request.data.get("category")
 
         if not title or not description:
             return JsonResponse({
@@ -328,13 +330,28 @@ def create_maintenance_request(request):
                 "message": "Title and description are required."
             }, status=400)
 
+        uploaded_images = []
+
+        images = request.FILES.getlist("images")
+
+        for image in images:
+
+            upload = cloudinary.uploader.upload(
+                image,
+                folder="unit/maintenance_requests"
+            )
+
+            uploaded_images.append(upload["secure_url"])
+
         maintenance = MaintenanceRequest.objects.create(
             tenant=tenant,
             property=tenant.unit.property,
             unit=tenant.unit,
             title=title,
             description=description,
-            priority=priority
+            priority=priority,
+            category=category,
+            images=uploaded_images
         )
 
         return JsonResponse({
@@ -345,16 +362,15 @@ def create_maintenance_request(request):
                 "title": maintenance.title,
                 "description": maintenance.description,
                 "priority": maintenance.priority,
+                "category": maintenance.category,
                 "status": maintenance.status,
-                "created_at": maintenance.created_at
+                "images": maintenance.images,
+                "created_at": maintenance.created_at,
             }
         })
 
     except Exception as e:
-        return JsonResponse({
-            "success": False,
-            "message": str(e)
-        }, status=500)
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
 
 
 
@@ -417,7 +433,6 @@ def tenant_rent_payments(request):
                 "id": payment.id,
                 "amount": float(payment.amount),
                 "payment_date": payment.payment_date.strftime("%d %b %Y"),
-                "receipt_number": payment.receipt_number,
                 "transaction_id": payment.transaction_id,
                 "payment_method": payment.payment_method,
                 "tenant": payment.tenant.user.full_name,
@@ -432,10 +447,64 @@ def tenant_rent_payments(request):
         })
 
     except Exception as e:
+        print(f"Error: {e}")
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def tenant_profile(request):
+    try:
+        tenant = Tenant.objects.select_related(
+            "user",
+            "unit",
+            "unit__property",
+        ).filter(
+            user=request.user
+        ).first()
+
+        if not tenant:
+            return JsonResponse({
+                "success": False,
+                "message": "Tenant profile not found."
+            }, status=404)
+
+        user = tenant.user
+        unit = tenant.unit
+        property = unit.property if unit else None
+
+        return JsonResponse({
+            "success": True,
+            "profile": {
+                "id": tenant.id,
+                "tenant_id": f"TNT-{tenant.id:05d}",
+
+                "full_name": user.full_name,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "profile_image": user.profile_image,
+
+                "property": property.name if property else "",
+                "unit": unit.name if unit else "",
+
+                "rent_amount": float(unit.rent) if unit else 0,
+
+                "move_in_date": tenant.created_at.strftime("%d %b %Y"),
+
+                "status": "Active" if tenant.is_active else "Inactive",
+            }
+        })
+
+    except Exception as e:
+        print(f"Error: {e}")
         return JsonResponse({
             "success": False,
             "message": str(e)
         }, status=500)
+
+
 
 
 

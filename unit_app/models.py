@@ -104,6 +104,27 @@ class Subscription(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.package.name}"
 
+
+class SubscriptionPayment(models.Model):
+    STATUS = (
+        ("pending", "Pending"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="subscription_payments")
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="payments")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField( max_length=50, default="paystack")
+    reference = models.CharField(max_length=150, unique=True)
+    transaction_id = models.CharField(max_length=150, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS, default="pending")
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True,)
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.reference}"
+
 class Property(models.Model):
     PROPERTY_TYPES = [
         ('apartment', 'Apartment'),
@@ -440,12 +461,21 @@ class MaintenanceRequest(models.Model):
         ("high", "High"),
         ("emergency", "Emergency"),
     ]
+    CATEGORY = (
+        ("plumbing", "Plumbing"),
+        ("electrical", "Electrical"),
+        ("cleaning", "Cleaning"),
+        ("painting", "Painting"),
+        ("security", "Security"),
+        ("other", "Other"),
+    )
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="maintenance_requests")
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="maintenance_requests")
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="maintenance_requests")
     title = models.CharField(max_length=255)
     description = models.TextField()
+    category = models.CharField(max_length=30, choices=CATEGORY, default="other")
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="medium")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     images = models.JSONField(default=list, blank=True)
