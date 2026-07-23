@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Activated</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Inter,sans-serif;
+        }
+
+        body{
+            background:#f5f7fb;
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            padding:30px;
+        }
+
+        .card{
+            width:100%;
+            max-width:600px;
+            background:#fff;
+            border-radius:20px;
+            overflow:hidden;
+            box-shadow:0 20px 50px rgba(0,0,0,.08);
+        }
+
+        .header{
+            background:#0A4429;
+            color:white;
+            padding:40px;
+            text-align:center;
+        }
+
+        .check{
+            width:90px;
+            height:90px;
+            border-radius:50%;
+            background:#22C55E;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            margin:auto;
+            font-size:50px;
+            font-weight:bold;
+        }
+
+        .header h1{
+            margin-top:20px;
+            font-size:32px;
+        }
+
+        .content{
+            padding:35px;
+        }
+
+        .content p{
+            color:#666;
+            line-height:1.7;
+            margin-bottom:25px;
+        }
+
+        .table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        .table tr{
+            border-bottom:1px solid #eee;
+        }
+
+        .table td{
+            padding:15px 0;
+        }
+
+        .table td:first-child{
+            color:#777;
+        }
+
+        .table td:last-child{
+            text-align:right;
+            font-weight:bold;
+            color:#0A4429;
+        }
+
+        .status{
+            color:#16A34A !important;
+        }
+
+        .button{
+            display:block;
+            width:100%;
+            text-align:center;
+            background:#0A4429;
+            color:white;
+            text-decoration:none;
+            padding:16px;
+            border-radius:12px;
+            font-weight:bold;
+            margin-top:35px;
+            transition:.3s;
+        }
+
+        .button:hover{
+            background:#22C55E;
+        }
+
+        .footer{
+            text-align:center;
+            color:#999;
+            font-size:13px;
+            padding:25px;
+            background:#fafafa;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+    <div class="header">
+
+        <div class="check">
+            ✓
+        </div>
+
+        <h1>Payment Successful</h1>
+
+    </div>
+
+    <div class="content">
+
+        <p>
+            Your payment has been received successfully.
+            Your subscription is now active.
+        </p>
+
+        <table class="table">
+
+            <tr>
+                <td>Reference</td>
+                <td>{{ reference }}</td>
+            </tr>
+
+            <tr>
+                <td>Package</td>
+                <td>{{ package_name }}</td>
+            </tr>
+
+            <tr>
+                <td>Billing Cycle</td>
+                <td>{{ billing_cycle }}</td>
+            </tr>
+
+            <tr>
+                <td>Amount Paid</td>
+                <td>KES {{ amount }}</td>
+            </tr>
+
+            <tr>
+                <td>Status</td>
+                <td class="status">ACTIVE</td>
+            </tr>
+
+        </table>
+
+        <a href="http://localhost:5173/login" class="button">
+            Continue to UNIT
+        </a>
+
+    </div>
+
+    <div class="footer">
+
+        Thank you for choosing UNIT Property Management Platform.
+
+    </div>
+
+</div>
+
+</body>
+</html>

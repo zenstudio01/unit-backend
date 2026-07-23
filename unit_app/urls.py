@@ -19,6 +19,7 @@ from .api_views.health import *
 from .api_views.chat import *
 from .api_views.maintenance import *
 from .api_views.announcements import *
+from .api_views.services import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -123,7 +124,7 @@ urlpatterns = [
     path("get_company/<int:company_id>/", get_company, name='get_company'),
     path("book_company/", book_company, name='book_company'),
     path("get_company_bookings/", get_company_bookings, name='get_company_bookings'),
-    # path("company_dashboard/", company_dashboard, name='company_dashboard'),
+    path("old_company_dashboard/", old_company_dashboard, name='old_company_dashboard'),
     path("accept_booking/<int:booking_id>/", accept_booking, name='accept_booking'),
     path("reject_booking/<int:booking_id>/", reject_booking, name='reject_booking'),
     path("company/company_dashboard/", company_dashboard, name="company_dashboard"),
@@ -157,8 +158,12 @@ urlpatterns = [
     path("mark_company_messages_read/", mark_company_messages_read, name='mark_company_messages_read'),
     path("company_conversation_messages/<int:conversation_id>/", company_conversation_messages, name='company_conversation_messages'),
 
-
-
+    # services
+    path("create_company_service/", create_company_service, name='create_company_service'),
+    path("get_company_services/", get_company_services, name='get_company_services'),
+    path("get_company_service/<int:service_id>/", get_company_service, name='get_company_service'),
+    path("update_company_service/<int:service_id>/", update_company_service, name='update_company_service'),
+    path("delete_company_service/<int:service_id>/", delete_company_service, name='delete_company_service'),
 
 
 ]

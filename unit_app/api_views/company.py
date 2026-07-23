@@ -288,61 +288,61 @@ def get_company_bookings(request):
 
 
 # company dashboard
-# @api_view(["GET"])
-# @permission_classes([IsAuthenticated])
-# def company_dashboard(request):
-#     try:
-#         company = Company.objects.get(owner=request.user)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def old_company_dashboard(request):
+    try:
+        company = Company.objects.get(owner=request.user)
 
-#         pending_requests = CompanyBooking.objects.filter(
-#             company=company,
-#             status="pending"
-#         ).count()
+        pending_requests = CompanyBooking.objects.filter(
+            company=company,
+            status="pending"
+        ).count()
 
-#         in_progress = CompanyBooking.objects.filter(
-#             company=company,
-#             status="accepted"
-#         ).count()
+        in_progress = CompanyBooking.objects.filter(
+            company=company,
+            status="accepted"
+        ).count()
 
-#         completed_jobs = CompanyBooking.objects.filter(
-#             company=company,
-#             status="completed"
-#         ).count()
+        completed_jobs = CompanyBooking.objects.filter(
+            company=company,
+            status="completed"
+        ).count()
 
-#         total_revenue = CompanyBookingPayment.objects.filter(
-#             company_booking__company=company,
-#             payment_status="success"
-#         ).aggregate(
-#             total=Sum("revenue")
-#         )["total"] or Decimal("0.00")
+        total_revenue = CompanyBookingPayment.objects.filter(
+            company_booking__company=company,
+            payment_status="success"
+        ).aggregate(
+            total=Sum("revenue")
+        )["total"] or Decimal("0.00")
 
-#         total_bookings = CompanyBooking.objects.filter(
-#             company=company
-#         ).count()
+        total_bookings = CompanyBooking.objects.filter(
+            company=company
+        ).count()
 
-#         return JsonResponse({
-#             "success": True,
-#             "dashboard": {
-#                 "company_name": company.name,
-#                 "pending_requests": pending_requests,
-#                 "in_progress": in_progress,
-#                 "completed_jobs": completed_jobs,
-#                 "total_bookings": total_bookings,
-#                 "total_revenue": float(total_revenue),
-#             }
-#         })
+        return JsonResponse({
+            "success": True,
+            "dashboard": {
+                "company_name": company.name,
+                "pending_requests": pending_requests,
+                "in_progress": in_progress,
+                "completed_jobs": completed_jobs,
+                "total_bookings": total_bookings,
+                "total_revenue": float(total_revenue),
+            }
+        })
 
-#     except Company.DoesNotExist:
-#         return JsonResponse({
-#             "success": False,
-#             "message": "Company not found."
-#         }, status=404)
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "message": "Company not found."
+        }, status=404)
 
-#     except Exception as e:
-#         return JsonResponse({
-#             "success": False,
-#             "message": str(e)
-#         }, status=500)
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
 
 
 

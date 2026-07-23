@@ -354,6 +354,36 @@ class Company(models.Model):
     def __str__(self):
         return self.name
 
+
+
+class CompanyService(models.Model):
+    SERVICE_CATEGORY = [
+    ("plumbing", "Plumbing"),
+    ("electrical", "Electrical"),
+    ("cleaning", "Cleaning"),
+    ("painting", "Painting"),
+    ("roofing", "Roofing"),
+    ("carpentry", "Carpentry"),
+    ("moving", "Moving"),
+    ("security", "Security"),
+    ("internet", "Internet"),
+    ("other", "Other"),
+    ]
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="services")
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    category = models.CharField(max_length=30, choices=SERVICE_CATEGORY, default="other")
+    minimum_price = models.DecimalField(max_digits=10, decimal_places=2)
+    maximum_price = models.DecimalField(max_digits=10, decimal_places=2)
+    duration = models.CharField(max_length=100, blank=True, null=True, help_text="Example: 1 Hour, 2 Days")
+    image = models.URLField(blank=True, null=True,help_text="Cloudinary image URL")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.company.name} - {self.title}"
+
 # professional model
 class Professional(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional_profile')

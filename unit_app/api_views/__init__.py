@@ -17,4 +17,5 @@ from .health import *
 from .chat import *
 from .maintenance import *
 from .announcements import *
+from .services import *
 
