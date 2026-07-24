@@ -21,7 +21,7 @@ def subscribe_plan(request):
     preferred_date = request.data.get("preferred_date")
     preferred_time = request.data.get("preferred_time")
     budget = request.data.get("budget")
-    # print(f"Email: {email}")
+    print(f"Email: {email}")
 
     print(f"Title: {title}")
 

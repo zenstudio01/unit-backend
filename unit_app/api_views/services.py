@@ -82,7 +82,7 @@ def create_company_service(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_company_services(request):
+def admin_get_company_services(request):
     try:
         company = Company.objects.filter(owner=request.user).first()
 
@@ -247,6 +247,58 @@ def delete_company_service(request, service_id):
         }, status=500)
 
 
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_company_services(request, company_id):
+    try:
+        company = Company.objects.filter(
+            id=company_id,
+            is_available=True
+        ).first()
+
+        if not company:
+            return JsonResponse({
+                "success": False,
+                "message": "Company not found."
+            }, status=404)
+
+        services = CompanyService.objects.filter(
+            company=company,
+            is_active=True
+        ).order_by("-created_at")
+
+        data = []
+
+        for service in services:
+            data.append({
+                "id": service.id,
+                "title": service.title,
+                "description": service.description,
+                "category": service.category,
+                "minimum_price": float(service.minimum_price),
+                "maximum_price": float(service.maximum_price),
+                "duration": service.duration,
+                "image": service.image,
+                "is_active": service.is_active,
+            })
+
+        return JsonResponse({
+            "success": True,
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "logo": company.logo,
+            },
+            "services": data
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
 
 
 

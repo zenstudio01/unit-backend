@@ -386,8 +386,8 @@ class CompanyService(models.Model):
 
 # professional model
 class Professional(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional_profile')
-    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='professional_company')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='professional_profile')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='professional_company')
     professional_title = models.CharField(max_length=255)
     years_of_experience = models.PositiveIntegerField()
     bio = models.TextField(blank=True, null=True)
@@ -409,6 +409,7 @@ class CompanyBooking(models.Model):
 
     customer = models.ForeignKey(User,on_delete=models.CASCADE,related_name="company_bookings")
     company = models.ForeignKey(Company, on_delete=models.CASCADE,related_name="bookings")
+    assigned_worker = models.ForeignKey(Professional, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_jobs")
     title = models.CharField(max_length=255)
     description = models.TextField()
     location = models.CharField(max_length=255)

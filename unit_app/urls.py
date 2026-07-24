@@ -134,6 +134,9 @@ urlpatterns = [
     path("company/add_professional/", add_professional, name='add_professional'),
     path("company/update_professional/<int:id>/", update_professional, name='update_professional'),
     path("company/delete_professional/<int:id>/", delete_professional, name='delete_professional'),
+    path("company/get_company_professionals/", get_company_professionals, name='get_company_professionals'),
+    path("company/assign_worker/<int:booking_id>/", assign_worker, name='assign_worker'),
+    path("company/booking_details/<int:booking_id>/", booking_details, name="booking_details"),
 
     # notifications
     path("get_notifications/", get_notifications, name='get_notifications'),
@@ -160,10 +163,11 @@ urlpatterns = [
 
     # services
     path("create_company_service/", create_company_service, name='create_company_service'),
-    path("get_company_services/", get_company_services, name='get_company_services'),
+    path("admin_get_company_services/", admin_get_company_services, name='admin_get_company_services'),
     path("get_company_service/<int:service_id>/", get_company_service, name='get_company_service'),
     path("update_company_service/<int:service_id>/", update_company_service, name='update_company_service'),
     path("delete_company_service/<int:service_id>/", delete_company_service, name='delete_company_service'),
+    path("get_company_services/<int:company_id>/", get_company_services, name="get_company_services"),
 
 
 ]

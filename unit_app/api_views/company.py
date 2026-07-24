@@ -665,23 +665,34 @@ def company_profile(request):
         company = Company.objects.get(owner=user)
 
     except Company.DoesNotExist:
-        return JsonResponse(
-            {
-                "success": False,
-                "message": "Company not found."
-            },
-            status=404
-        )
+        return JsonResponse({
+            "success": False,
+            "message": "Company not found."
+        }, status=404)
 
-    professionals = Professional.objects.filter(company=company).count()
+    professionals = Professional.objects.filter(
+        company=company
+    ).count()
 
-    bookings = CompanyBooking.objects.filter(company=company)
+    bookings = CompanyBooking.objects.filter(
+        company=company
+    )
 
-    completed_jobs = bookings.filter(status="completed").count()
+    completed_jobs = bookings.filter(
+        status="completed"
+    ).count()
 
-    wallet = CompanyWallet.objects.filter(company=company).first()
+    wallet = CompanyWallet.objects.filter(
+        company=company
+    ).first()
 
     wallet_balance = wallet.amount if wallet else 0
+
+    # Active subscription
+    subscription = Subscription.objects.filter(
+        user=user,
+        is_active=True
+    ).select_related("package").first()
 
     data = {
         "company": {
@@ -702,17 +713,36 @@ def company_profile(request):
             "updated_at": company.updated_at,
         },
 
+        "subscription": (
+            {
+                "id": subscription.id,
+                "package": {
+                    "id": subscription.package.id,
+                    "name": subscription.package.name,
+                    "description": subscription.package.description,
+                    "monthly_price": float(subscription.package.monthly_price),
+                    "yearly_price": float(subscription.package.yearly_price),
+                    "month_days": subscription.package.month_days,
+                    "year_days": subscription.package.year_days,
+                    "number_of_units": subscription.package.number_of_units,
+                    "mpesa_daraja": subscription.package.mpesa_daraja,
+                    "email_notifications": subscription.package.email_notifications,
+                    "logs_duration": subscription.package.logs_duration,
+                },
+                "start_date": subscription.start_date,
+                "end_date": subscription.end_date,
+                "is_active": subscription.is_active,
+            }
+            if subscription
+            else None
+        ),
+
         "statistics": {
-
             "professionals": professionals,
-
             "bookings": bookings.count(),
-
             "completed_jobs": completed_jobs,
-
-            "wallet": float(wallet_balance)
-
-        }
+            "wallet": float(wallet_balance),
+        },
     }
 
     return JsonResponse(data)
@@ -1063,6 +1093,187 @@ def delete_professional(request, id):
         "message": "Professional deleted successfully."
 
     })
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_company_professionals(request):
+    try:
+        company = Company.objects.get(owner=request.user)
+
+        professionals = Professional.objects.filter(
+            company=company,
+            is_available=True
+        )
+
+        data = []
+
+        for worker in professionals:
+            data.append({
+                "id": worker.id,
+                "name": worker.user.full_name,
+                "phone": worker.user.phone_number,
+                "email": worker.user.email,
+                "profession": worker.profession,
+                "experience": worker.experience,
+                "image": worker.user.profile_image,
+            })
+
+        return JsonResponse({
+            "success": True,
+            "professionals": data
+        })
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "message": "Company not found."
+        }, status=404)
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def assign_worker(request, booking_id):
+    try:
+        company = Company.objects.get(owner=request.user)
+
+        booking = get_object_or_404(
+            CompanyBooking,
+            id=booking_id,
+            company=company
+        )
+
+        if booking.status != "accepted":
+            return JsonResponse({
+                "success": False,
+                "message": "Booking must be accepted first."
+            }, status=400)
+
+        worker_id = request.data.get("worker_id")
+
+        if not worker_id:
+            return JsonResponse({
+                "success": False,
+                "message": "Worker is required."
+            }, status=400)
+
+        worker = get_object_or_404(
+            Professional,
+            id=worker_id,
+            company=company
+        )
+
+        booking.assigned_worker = worker
+        booking.status = "assigned"
+        booking.save()
+
+        # Notify customer
+        if booking.customer.expo_token:
+            send_push_notification(
+                booking.customer.expo_token,
+                title="Worker Assigned",
+                body=f"{worker.user.full_name} has been assigned to your booking.",
+                data={
+                    "booking_id": booking.id,
+                    "status": "assigned"
+                }
+            )
+
+        # Notify worker
+        if worker.user.expo_token:
+            send_push_notification(
+                worker.user.expo_token,
+                title="New Job Assigned",
+                body=f"You have been assigned a new job for {booking.customer.full_name}.",
+                data={
+                    "booking_id": booking.id
+                }
+            )
+
+        return JsonResponse({
+            "success": True,
+            "message": "Worker assigned successfully."
+        })
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "message": "Company not found."
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def booking_details(request, booking_id):
+    try:
+        company = Company.objects.get(owner=request.user)
+
+        booking = get_object_or_404(
+            CompanyBooking,
+            id=booking_id,
+            company=company
+        )
+
+        data = {
+            "id": booking.id,
+
+            "customer": {
+                "id": booking.customer.id,
+                "name": booking.customer.full_name,
+                "email": booking.customer.email,
+                "phone": booking.customer.phone_number,
+            },
+
+            "title": booking.title,
+            "description": booking.description,
+            "location": booking.location,
+
+            "preferred_date": booking.preferred_date,
+            "preferred_time": booking.preferred_time.strftime("%H:%M"),
+
+            "budget": float(booking.budget),
+
+            "status": booking.status,
+
+            "assigned_worker": None,
+
+            "created_at": booking.created_at,
+        }
+
+        if booking.assigned_worker:
+            data["assigned_worker"] = {
+                "id": booking.assigned_worker.id,
+                "name": booking.assigned_worker.user.full_name,
+                "profession": booking.assigned_worker.profession,
+                "phone": booking.assigned_worker.user.phone_number,
+                "image": booking.assigned_worker.profile_image,
+            }
+
+        return JsonResponse({
+            "success": True,
+            "booking": data
+        })
+
+    except Company.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "message": "Company not found."
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
 
 
 

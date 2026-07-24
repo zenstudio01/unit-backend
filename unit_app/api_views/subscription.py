@@ -227,7 +227,7 @@ def property_manager_subscription_callback(request):
                 days=package.year_days
             )
 
-        Subscription.objects.update_or_create(
+        subscription = Subscription.objects.update_or_create(
 
             user=payment.user,
 
