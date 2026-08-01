@@ -30,34 +30,27 @@ class UserManager(BaseUserManager):
 
         return self.create_user(username, email, password, **extra_fields)
 
+
 class User(AbstractUser):
-    ROLES = (
-        ("super admin", "Super Admin"),
-        ("company admin", "Company Admin"),
-        ("property manager", "Property Manager"),
-        ("accountant", "Accountant"),
-        ("leasing officer", "Leasing Officer"),
-        ("maintenance officer", "Maintenance Officer"),
-        ("tenant", "Tenant"),
-        ("landlord", "Landlord"),
-        ("client", "Client"),
+    PLATFORM_ROLES = (
+        ("platform_admin", "Platform Admin"),
+        ("user", "User"),
     )
+
     full_name = models.CharField(max_length=100)
-    role = models.CharField(max_length=20, choices=ROLES)
-    email = models.CharField(max_length=100, default="johndoe@example.com")
-    phone_number = models.CharField(max_length=20, unique=True)
+    role = models.CharField( max_length=20,choices=PLATFORM_ROLES,default="user")
+    email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)
-    profile_image = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
-    id_front_image = models.URLField(blank=True,null=True, default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
-    id_back_image = models.URLField(blank=True,null=True, default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
-    location = models.CharField(max_length=255,blank=True,null=True)
-    latitude = models.DecimalField( max_digits=9, decimal_places=6, blank=True, null=True)
-    longitude = models.DecimalField( max_digits=9, decimal_places=6, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, unique=True)
+    profile_image = models.URLField(blank=True)
+    location = models.CharField(max_length=255, blank=True)
+    latitude = models.DecimalField(max_digits=9,decimal_places=6,null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     phone_verified = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=255, null=True, blank=True)
     reset_token = models.CharField(max_length=255, null=True, blank=True)
-    expo_token = models.CharField(max_length=100, default="")
+    expo_token = models.CharField(max_length=100, default="", null=True, blank=True)
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -92,133 +85,580 @@ class Package(models.Model):
     def __str__(self):
         return self.name
 
+
 class Subscription(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
-    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='subscriptions')
-    start_date = models.DateTimeField(auto_now_add=True)
+    BILLING_CYCLES = (
+        ("monthly", "Monthly"),
+        ("yearly", "Yearly"),
+    )
+
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("active", "Active"),
+        ("expired", "Expired"),
+        ("cancelled", "Cancelled"),
+    )
+
+    company = models.ForeignKey("Company",on_delete=models.CASCADE,related_name="subscriptions")
+    package = models.ForeignKey(Package,on_delete=models.PROTECT,related_name="subscriptions",)
+    billing_cycle = models.CharField(max_length=20,choices=BILLING_CYCLES)
+    start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20,choices=STATUS_CHOICES,default="pending",)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.package.name}"
+        return f"{self.company.name} - {self.package.name}"
 
 
 class SubscriptionPayment(models.Model):
-    STATUS = (
+    STATUS_CHOICES = (
         ("pending", "Pending"),
         ("success", "Success"),
         ("failed", "Failed"),
+        ("refunded", "Refunded"),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="subscription_payments")
-    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="payments")
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_method = models.CharField( max_length=50, default="paystack")
+    subscription = models.ForeignKey(Subscription,on_delete=models.CASCADE,related_name="payments",)
+    company = models.ForeignKey( "Company", on_delete=models.CASCADE,related_name="subscription_payments",)
+    initiated_by = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name="initiated_subscription_payments",)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=50)
     reference = models.CharField(max_length=150, unique=True)
-    transaction_id = models.CharField(max_length=150, blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS, default="pending")
+    transaction_id = models.CharField(max_length=150,blank=True,null=True,)
+    status = models.CharField(max_length=20,choices=STATUS_CHOICES,default="pending",)
     paid_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True,)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.full_name} - {self.reference}"
+        return f"{self.company.name} - {self.reference}"
 
-class Property(models.Model):
-    PROPERTY_TYPES = [
-        ('apartment', 'Apartment'),
-        ('house', 'House'),
-        ('office', 'Office'),
-        ('mall', 'Mall'),
-        ('warehouse', 'Warehouse'),
-        ('hostel', 'Hostel'),
-    ]
 
-    STATUS_CHOICES = [
-        ('available', 'Available'),
-        ('occupied', 'Occupied'),
-        ('under_maintenance', 'Under Maintenance'),
-    ]
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='properties')
-    landlord = models.ForeignKey(User, on_delete=models.CASCADE, related_name='landlord_properties', null=True, blank=True)
-    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='properties')
+
+class Company(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="owned_companies")
     name = models.CharField(max_length=255)
-    description = models.TextField()
-    property_type = models.CharField(max_length=20, choices=PROPERTY_TYPES)
-    amenities = models.JSONField(default=list) 
-    address = models.CharField(max_length=255)
-    legal_plot_number = models.CharField(max_length=100)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=20)
+    logo = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png", blank=True)
+    address = models.TextField()
     city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
     country = models.CharField(max_length=100)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
-    images = models.JSONField(default=list)  # Store image URLs as JSON array
-    is_featured = models.BooleanField(default=False)
+    website = models.URLField(blank=True)
+    description = models.TextField(blank=True)
+    is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
 
-class Unit(models.Model):
-    STATUS_CHOICES = [
-        ('available', 'Available'),
-        ('occupied', 'Occupied'),
-        ('under_maintenance', 'Under Maintenance'),
-    ]
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    rent = models.DecimalField(max_digits=10, decimal_places=2)
-    deposit = models.DecimalField(max_digits=10, decimal_places=2)
-    bedrooms = models.PositiveIntegerField()
-    bathrooms = models.PositiveIntegerField()
-    max_guests = models.PositiveIntegerField()
-    water_meter = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    electricity_meter = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    status = models.CharField(max_length=20, choices=Property.STATUS_CHOICES, default='available')
-    images = models.JSONField(default=list)  # Store image URLs as JSON array
-    is_featured = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.name} - {self.property.name}"
-
-class Tenant(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tenant_profile')
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='tenants')
-    emergency_contact = models.CharField(max_length=30, blank=True, null=True)
-    lease_start_date = models.DateTimeField(auto_now_add=True)
-    lease_end_date = models.DateTimeField()
-    id_number = models.CharField(max_length=50, blank=True, null=True)
+class CompanyStaff(models.Model):
+    ROLES = (
+        ("admin", "Admin"),
+        ("property_manager", "Property Manager"),
+        ("accountant", "Accountant"),
+        ("leasing_officer", "Leasing Officer"),
+        ("maintenance_officer", "Maintenance Officer"),
+    )
+    company = models.ForeignKey(Company,on_delete=models.CASCADE,related_name="staff")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=30,choices=ROLES)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.full_name} - {self.unit.name}"
+        return f"{self.user.full_name} - {self.role}"
+
+
+class Landlord(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="landlords")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    national_id = models.CharField(max_length=50)
+    tax_number = models.CharField(max_length=50,blank=True,null=True,)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} - Landlord"
+
+
+
+class Property(models.Model):
+
+    PROPERTY_TYPES = (
+        ("apartment","Apartment"),
+        ("house","House"),
+        ("hostel","Hostel"),
+        ("office","Office"),
+        ("mall","Mall"),
+        ("warehouse","Warehouse"),
+    )
+
+    STATUS = (
+        ("active","Active"),
+        ("inactive","Inactive"),
+        ("maintenance","Maintenance"),
+    )
+
+    company = models.ForeignKey(Company,on_delete=models.CASCADE,related_name="properties")
+    landlord = models.ForeignKey(Landlord,on_delete=models.CASCADE,related_name="properties")
+    manager = models.ForeignKey(CompanyStaff,on_delete=models.SET_NULL,null=True,blank=True,related_name="managed_properties")
+    name = models.CharField(max_length=255)
+    property_type = models.CharField(max_length=30,choices=PROPERTY_TYPES)
+    description = models.TextField()
+    amenities = models.JSONField(default=list)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    latitude = models.DecimalField(max_digits=9,decimal_places=6,null=True,blank=True)
+    longitude = models.DecimalField(max_digits=9,decimal_places=6,null=True,blank=True)
+    images = models.JSONField(default=list)
+    status = models.CharField(max_length=20,choices=STATUS,default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    def __str__(self):
+        return self.name
+
+
+
+class Unit(models.Model):
+    STATUS_CHOICES = (
+        ("available", "Available"),
+        ("occupied", "Occupied"),
+        ("maintenance", "Maintenance"),
+        ("reserved", "Reserved"),
+        ("inactive", "Inactive"),
+    )
+
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="units",
+    )
+    unit_number = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    rent = models.DecimalField(max_digits=12, decimal_places=2)
+    deposit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    bedrooms = models.PositiveIntegerField(default=0)
+    bathrooms = models.PositiveIntegerField(default=0)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="available",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["property", "unit_number"],
+                name="unique_unit_number_per_property",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.property.name} - {self.unit_number}"
+
+
+
+class Tenant(models.Model):
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="tenants",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="tenant_profiles",
+    )
+    emergency_contact_name = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+    emergency_contact_phone = models.CharField(
+        max_length=30,
+        blank=True,
+    )
+    national_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "user"],
+                name="unique_tenant_per_company",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.company.name}"
+
+
+class Lease(models.Model):
+    STATUS_CHOICES = (
+        ("draft", "Draft"),
+        ("active", "Active"),
+        ("expired", "Expired"),
+        ("terminated", "Terminated"),
+        ("cancelled", "Cancelled"),
+    )
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="leases",
+    )
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.PROTECT,
+        related_name="leases",
+    )
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.PROTECT,
+        related_name="leases",
+    )
+    lease_start = models.DateField()
+    lease_end = models.DateField()
+    monthly_rent = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+    security_deposit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    payment_due_day = models.PositiveSmallIntegerField(default=5)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="draft",
+    )
+    signed_at = models.DateTimeField(null=True, blank=True)
+    terminated_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        errors = {}
+
+        if self.lease_end <= self.lease_start:
+            errors["lease_end"] = "Lease end must be after lease start."
+
+        if self.tenant_id and self.unit_id:
+            if self.tenant.company_id != self.unit.property.company_id:
+                errors["tenant"] = (
+                    "Tenant and unit must belong to the same company."
+                )
+
+        if self.company_id and self.unit_id:
+            if self.unit.property.company_id != self.company_id:
+                errors["unit"] = (
+                    "Unit must belong to the lease company."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"{self.tenant.user.full_name} - {self.unit.unit_number}"
+
+
+
+class RentInvoice(models.Model):
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("partially_paid", "Partially Paid"),
+        ("paid", "Paid"),
+        ("overdue", "Overdue"),
+        ("cancelled", "Cancelled"),
+    )
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="rent_invoices",
+    )
+    lease = models.ForeignKey(
+        Lease,
+        on_delete=models.PROTECT,
+        related_name="invoices",
+    )
+    billing_month = models.DateField()
+    rent_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    service_charge = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    penalties = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    amount_paid = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    due_date = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lease", "billing_month"],
+                name="unique_monthly_invoice_per_lease",
+            ),
+        ]
+
+    @property
+    def total_due(self):
+        return self.rent_amount + self.service_charge + self.penalties
+
+    @property
+    def balance(self):
+        return self.total_due - self.amount_paid
+
+
+
 
 class RentPayment(models.Model):
-    CHOICES = [
-        ('mpesa', 'Mpesa'),
-        ('paystack', 'Paystack'),
-        ('bank', 'Bank'),
-    ]
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='rent_payments')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_date = models.DateTimeField(default=timezone.now)
-    is_paid = models.BooleanField(default=False)
-    payment_method = models.CharField(max_length=50, choices=CHOICES, default="Mpesa")  # Assuming M-Pesa as default
-    transaction_id = models.CharField(max_length=255, blank=True, null=True, default="M299920sjsjsk")
+    PAYMENT_METHODS = (
+        ("mpesa", "M-Pesa"),
+        ("bank", "Bank"),
+        ("card", "Card"),
+        ("cash", "Cash"),
+        ("other", "Other"),
+    )
+
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+        ("reversed", "Reversed"),
+    )
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="rent_payments",
+    )
+    invoice = models.ForeignKey(
+        RentInvoice,
+        on_delete=models.PROTECT,
+        related_name="payments",
+    )
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.PROTECT,
+        related_name="rent_payments",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PAYMENT_METHODS,
+    )
+    transaction_id = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+    )
+    receipt_number = models.CharField(
+        max_length=100,
+        unique=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+    recorded_by = models.ForeignKey(
+        CompanyStaff,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_rent_payments",
+    )
+    paid_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.receipt_number} - {self.amount}"
+
+
+
+
+class MaintenanceRequest(models.Model):
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("assigned", "Assigned"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    )
+
+    PRIORITY_CHOICES = (
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("emergency", "Emergency"),
+    )
+
+    CATEGORY_CHOICES = (
+        ("plumbing", "Plumbing"),
+        ("electrical", "Electrical"),
+        ("cleaning", "Cleaning"),
+        ("painting", "Painting"),
+        ("security", "Security"),
+        ("other", "Other"),
+    )
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="maintenance_requests",
+    )
+    lease = models.ForeignKey(
+        Lease,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_requests",
+    )
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="maintenance_requests",
+    )
+    reported_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="reported_maintenance_requests",
+    )
+    assigned_staff = models.ForeignKey(
+        CompanyStaff,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_maintenance_requests",
+    )
+    assigned_provider = models.ForeignKey(
+        "ServiceProvider",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_jobs",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default="other",
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default="medium",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+    images = models.JSONField(default=list, blank=True)
+    estimated_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    actual_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.tenant.user.full_name} - {self.amount} - {'Paid' if self.is_paid else 'Unpaid'}"
+        return f"{self.unit.unit_number} - {self.title}"
+
+
+
+
+
+class Announcement(models.Model):
+    TARGET_CHOICES = (
+        ("all", "All Company Tenants"),
+        ("property", "Specific Property"),
+        ("unit", "Specific Unit"),
+    )
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="announcements",
+    )
+    created_by = models.ForeignKey(
+        CompanyStaff,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_announcements",
+    )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="announcements",
+        null=True,
+        blank=True,
+    )
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="announcements",
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    target = models.CharField(
+        max_length=20,
+        choices=TARGET_CHOICES,
+        default="property",
+    )
+    is_active = models.BooleanField(default=True)
+    published_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 
 
 class ServiceProvider(models.Model):
@@ -242,117 +682,6 @@ class Notification(models.Model):
     def __str__(self):
         return f"{self.user.full_name} - {self.title}"
 
-# class MaintenanceRequest(models.Model):
-#     STATUS_CHOICES = [
-#         ('pending', 'Pending'),
-#         ('in_progress', 'In Progress'),
-#         ('completed', 'Completed'),
-#     ]
-#     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='maintenance_requests')
-#     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='maintenance_requests')
-#     description = models.TextField()
-#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"{self.tenant.user.full_name} - {self.unit.name} - {self.status}"
-
-class Store(models.Model):
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stores')
-    store_name = models.CharField(max_length=255, default="Default Store")
-    phone_number = models.CharField(max_length=20, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    location = models.CharField(max_length=255, blank=True, null=True)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.store_name
-
-class Product(models.Model):
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='products')
-    product_name = models.CharField(max_length=255)
-    description = models.TextField()
-    stock_quantity = models.PositiveIntegerField()
-    barcode_number = models.CharField(max_length=100, blank=True, null=True)
-    buying_price = models.DecimalField(max_digits=10, decimal_places=2)
-    selling_price = models.DecimalField(max_digits=10, decimal_places=2)
-    supplier = models.CharField(max_length=255, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.product_name} - {self.store.store_name}"
-
-
-# product sales model
-class ProductSale(models.Model):
-    CHOICES = [
-        ("pending", "Pending"),
-        ("on-transist", "On-transist"),
-        ("delivered", "Delivered"),
-    ]
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='products')
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='store_sales', default=1)
-    quantity = models.IntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='buyer', default=1)
-    location = models.CharField(max_length=255, blank=True, null=True)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    order_status = models.CharField(max_length=20, choices=CHOICES, default="pending")
-    sold_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Sale # {self.id} for {self.store.store_name} Product {self.product.product_name}"
-
-# payment model
-class ProductPayment(models.Model):
-    PAYMENT_METHODS = [
-        ("mpesa", "Mpesa"),
-        ("card", "Card"),
-        ("paystack", "Paystack"),
-    ]
-    STATUS = [
-        ("paid", "Paid"),
-        ("failed", "Failed"),
-        ("pending", "Pending"),
-    ]
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, default=1)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
-    payment_status = models.CharField(max_length=10, choices=STATUS)
-    checkout_request_id = models.CharField(max_length=100, default="N/A")
-    receipt_number = models.CharField(max_length=100, default="N/A")
-    paid_at = models.DateTimeField(default=timezone.now)
-
-
-# company model
-class Company(models.Model):
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='companies')
-    name = models.CharField(max_length=255, blank=True, null=True)
-    email = models.EmailField(max_length=255, blank=True, null=True)
-    phone_number = models.CharField(max_length=20, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    logo = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
-    address = models.TextField(blank=True, null=True)
-    website = models.CharField(max_length=255, blank=True, null=True)
-    service = models.CharField(max_length=255, blank=True, null=True)
-    city = models.CharField(max_length=100, blank=True, null=True, default='Nairobi')
-    country = models.CharField(max_length=100, blank=True, null=True, default="Kenya")
-    postal_code = models.CharField(max_length=20, blank=True, null=True)
-    is_available = models.BooleanField(default=True)
-    is_verified = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
 
 
 
@@ -445,14 +774,52 @@ class CompanyBookingPayment(models.Model):
 
 
 class CompanyWallet(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="company_wallet")
-    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
-    float_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    pending_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
-    created_at = models.DateTimeField(auto_now_add=True)
+    company = models.OneToOneField(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="wallet",
+    )
+    available_balance = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0,
+    )
+    pending_balance = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0,
+    )
+    reserved_balance = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0,
+    )
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"#{self.id} Company {self.company.name} {self.amount}"
+        return f"{self.company.name} - {self.available_balance}"
+
+
+
+class CompanyWalletTransaction(models.Model):
+    TRANSACTION_TYPES = (
+        ("credit", "Credit"),
+        ("debit", "Debit"),
+    )
+
+    wallet = models.ForeignKey(
+        CompanyWallet,
+        on_delete=models.CASCADE,
+        related_name="transactions",
+    )
+    transaction_type = models.CharField(
+        max_length=10,
+        choices=TRANSACTION_TYPES,
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    reference = models.CharField(max_length=150, unique=True)
+    description = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 # conversation models
@@ -478,221 +845,5 @@ class CompanyMessage(models.Model):
         return self.message[:40]
 
 
-class MaintenanceRequest(models.Model):
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("in_progress", "In Progress"),
-        ("completed", "Completed"),
-        ("cancelled", "Cancelled"),
-    ]
 
-    PRIORITY_CHOICES = [
-        ("low", "Low"),
-        ("medium", "Medium"),
-        ("high", "High"),
-        ("emergency", "Emergency"),
-    ]
-    CATEGORY = (
-        ("plumbing", "Plumbing"),
-        ("electrical", "Electrical"),
-        ("cleaning", "Cleaning"),
-        ("painting", "Painting"),
-        ("security", "Security"),
-        ("other", "Other"),
-    )
-
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="maintenance_requests")
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="maintenance_requests")
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="maintenance_requests")
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    category = models.CharField(max_length=30, choices=CATEGORY, default="other")
-    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="medium")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-    images = models.JSONField(default=list, blank=True)
-    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_maintenance_requests")
-    completed_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.unit.name} - {self.title}"
-
-
-class Announcement(models.Model):
-    TARGET_CHOICES = [
-        ("all", "All Tenants"),
-        ("property", "Property"),
-        ("unit", "Unit"),
-    ]
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="announcements")
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="announcements", null=True, blank=True)
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="announcements", null=True, blank=True)
-    title = models.CharField(max_length=255)
-    message = models.TextField()
-    target = models.CharField(max_length=20, choices=TARGET_CHOICES, default="property")
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.title
-
-
-
-
-
-
-
-class PropertyBooking(models.Model):
-    STATUS = [
-        ("pending", "Pending"),
-        ("accepted", "Accepted"),
-        ("rejected", "Rejected"),
-        ("completed", "Completed"),
-    ]
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="property_bookings")
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="property_bookings")
-    status = models.CharField( max_length=20, choices=STATUS,default="pending")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-class PropertyBookingPayment(models.Model):
-    STATUS = (
-        ("pending", "Pending"),
-        ("success", "Success"),
-        ("failed", "Failed"),
-    )
-    property_booking = models.OneToOneField(PropertyBooking,on_delete=models.CASCADE)
-    payment_method = models.CharField(max_length=50, blank=True, null=True) 
-    amount = models.DecimalField( max_digits=10,decimal_places=2)
-    revenue = models.DecimalField( max_digits=10,decimal_places=2)
-    transaction_id = models.CharField(max_length=100, blank=True,null=True)
-    payment_status = models.CharField( max_length=20, choices=STATUS, default="pending")
-    receipt_number = models.CharField(max_length=100,blank=True,null=True)
-    checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
-    paid_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"#{self.id} {self.payment_method} {self.amount} {self.payment_status}"
-
-class PropManagerWallet(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="property_manager_wallet")
-    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
-    float_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    pending_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"#{self.id} Property manager {self.user.full_name} {self.amount}"
-
-# # jobs
-# class Job(models.Model):
-
-#     STATUS = (
-#         ("pending", "Pending"),
-#         ("paid", "Paid"),
-#         ("accepted", "Accepted"),
-#         ("ongoing", "Ongoing"),
-#         ("completed", "Completed"),
-#         ("cancelled", "Cancelled"),
-#         ("rejected", "Rejected"),
-#     )
-
-#     client = models.ForeignKey(User,on_delete=models.CASCADE,related_name="jobs_created")
-#     worker = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name="jobs")
-#     title = models.CharField(max_length=255)
-#     description = models.TextField()
-#     budget = models.DecimalField(max_digits=10,decimal_places=2)
-#     work_sample_image = models.URLField(blank=True,null=True, default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
-#     location = models.CharField(max_length=255)
-#     latitude = models.DecimalField( max_digits=9, decimal_places=6, null=True, blank=True)
-#     longitude = models.DecimalField(max_digits=9, decimal_places=6,null=True,blank=True)
-#     scheduled_date = models.DateField()
-#     scheduled_time = models.TimeField()
-#     status = models.CharField(max_length=20,choices=STATUS,default="pending")
-#     payment_status = models.CharField(max_length=20,choices=STATUS,default="pending")
-#     created_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} {self.title} {self.budget} {self.location} {self.status}"
-
-# # bookings
-# class Booking(models.Model):
-#     job = models.OneToOneField(Job,on_delete=models.CASCADE)
-#     booked_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} {self.booked_at}"
-
-# reviews
-# class Review(models.Model):
-#     client = models.ForeignKey( User, on_delete=models.CASCADE)
-#     worker = models.ForeignKey( WorkerProfile, on_delete=models.CASCADE)
-#     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name="review")
-#     rating = models.PositiveIntegerField()
-#     comment = models.TextField()
-#     created_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} {self.rating} {self.comment}"
-
-# # notifications
-# class Notification(models.Model):
-#     MSG_TYPE = (
-#         ("booking", "Booking"),
-#         ("message", "Message"),
-#         ("payment", "Payment"),
-#         ("completed", "Completed"),
-#     )
-#     user = models.ForeignKey(User,on_delete=models.CASCADE)
-#     title = models.CharField(max_length=255)
-#     message = models.CharField(default="message", max_length=255)
-#     msg_type = models.TextField(choices=MSG_TYPE)
-#     is_read = models.BooleanField(default=False)
-#     created_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} {self.title}"
-
-
-# # payments
-# class Payment(models.Model):
-#     STATUS = (
-#         ("pending", "Pending"),
-#         ("success", "Success"),
-#         ("failed", "Failed"),
-#     )
-#     job = models.OneToOneField(Job,on_delete=models.CASCADE)
-#     payment_method = models.CharField(max_length=50, blank=True, null=True) 
-#     amount = models.DecimalField( max_digits=10,decimal_places=2)
-#     revenue = models.DecimalField( max_digits=10,decimal_places=2)
-#     transaction_id = models.CharField(max_length=100, blank=True,null=True)
-#     payment_status = models.CharField( max_length=20, choices=STATUS, default="pending")
-#     receipt_number = models.CharField(max_length=100,blank=True,null=True)
-#     checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
-#     paid_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} {self.method} {self.amount} {self.status}"
-
-
-# class Wallet(models.Model):
-#     worker = models.ForeignKey("WorkerProfile", on_delete=models.CASCADE, related_name="worker_wallet")
-#     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
-#     float_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-#     pending_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0) 
-#     created_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} Worker {self.worker.user.full_name} {self.amount}"
-
-# class Withdraw(models.Model):
-#     worker = models.ForeignKey("WorkerProfile", on_delete=models.CASCADE, related_name="withdrawals")
-#     amount = models.DecimalField(max_digits=10, decimal_places=2) 
-#     transactionRef = models.CharField(max_length=100, blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"#{self.id} Withdraw {self.worker.user.full_name} {self.amount} ({self.transactionRef})"
 

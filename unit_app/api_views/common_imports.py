@@ -34,14 +34,14 @@ from rest_framework.decorators import (
     permission_classes,
 )
 from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.permissions import BasePermission, IsAuthenticated, IsAdminUser
+from rest_framework.permissions import BasePermission, IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import serializers
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 
 # models
-from unit_app.models import User, Package, Subscription, SubscriptionPayment, Property, Unit, Tenant, RentPayment, ServiceProvider, Notification, MaintenanceRequest, Store, Product, ProductSale, ProductPayment, Professional, Company, CompanyService, CompanyBooking, CompanyBookingPayment, CompanyWallet, PropertyBooking, PropertyBookingPayment, PropManagerWallet, CompanyConversation, CompanyMessage, Announcement
+from unit_app.models import User, Package, Subscription, Property, Unit, Tenant, RentPayment, Notification, MaintenanceRequest, Company, CompanyService, Professional, CompanyBooking, CompanyBookingPayment, CompanyWallet, CompanyConversation, CompanyMessage, Announcement, CompanyStaff, Lease, RentInvoice, CompanyWalletTransaction, ServiceProvider
 
 
 # =========================
