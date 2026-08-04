@@ -32,26 +32,28 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    PLATFORM_ROLES = (
-        ("platform_admin", "Platform Admin"),
-        ("user", "User"),
+    STATUS_CHOICES = (
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+        ("pending", "Pending"),
+        ("suspended", "Suspended"),
+        ("deactivated", "Deactivated"),
     )
-
-    full_name = models.CharField(max_length=100)
-    role = models.CharField( max_length=20,choices=PLATFORM_ROLES,default="user")
-    email = models.EmailField(unique=True)
-    username = models.CharField(max_length=150, unique=True)
+    first_name = models.CharField(max_length=100)
+    middle_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.CharField(max_length=100, default="johndoe@example.com")
     phone_number = models.CharField(max_length=20, unique=True)
-    profile_image = models.URLField(blank=True)
-    location = models.CharField(max_length=255, blank=True)
-    latitude = models.DecimalField(max_digits=9,decimal_places=6,null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    username = models.CharField(max_length=150, unique=True)
+    profile_image = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
     phone_verified = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=255, null=True, blank=True)
     reset_token = models.CharField(max_length=255, null=True, blank=True)
-    expo_token = models.CharField(max_length=100, default="", null=True, blank=True)
+    last_login = models.DateTimeField(auto_now=True)
+    expo_token = models.CharField(max_length=100, default="")
     is_verified = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
     created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = 'username'
@@ -61,6 +63,433 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    national_id_number = models.CharField(max_length=50, blank=True, null=True)
+    kra_pin = models.CharField(max_length=50, blank=True, null=True)
+    gender = models.CharField(max_length=10, blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    county = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"
+
+
+class UserSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    refresh_token_id = models.CharField(max_length=255, unique=True)
+    device_name = models.CharField(max_length=255, blank=True, null=True)
+    device_type = models.CharField(max_length=255, blank=True, null=True)
+    operating_system = models.CharField(max_length=255, blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.user.username} - {self.refresh_token_id}"
+
+
+class Organization(models.Model):
+    ORGANIZATION_TYPES = [
+        ('property_manager', 'Property Manager'),
+        ('landlord', 'Landlord'),
+        ('developer', 'Developer'),
+        ('contractor', 'Contractor'),
+        ('consultancy', 'Consultancy'),
+        ('investor', 'Investor'),
+        ('corporate_client', 'Corporate Client'),
+        ('other', 'Other'),
+    ]
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organizations')
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True)
+    organization_type = models.CharField(max_length=100, blank=True, null=True)
+    kra_pin = models.CharField(max_length=50, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    logo = models.URLField(default="https://res.cloudinary.com/dc68huvjj/image/upload/v1748102584/kwwwa0avlfoeybpi3key.png")
+    country = models.CharField(max_length=100, blank=True, null=True)
+    county = models.CharField(max_length=100, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+    is_verified = models.BooleanField(default=False)
+    website = models.URLField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class OrganizationBranch(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='branches')
+    name = models.CharField(max_length=255)
+    branch_code = models.CharField(max_length=100, unique=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    county = models.CharField(max_length=100, blank=True, null=True)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.organization.name}"
+
+
+class Role(models.Model):
+    ROLES_NAMES = [
+        ('organization_owner', 'Organization Owner'),
+        ('organization_admin', 'Organization Admin'),
+        ('property_manager', 'Property Manager'),
+        ('accountant', 'Accountant'),
+        ('landlord', 'Landlord'),
+        ('tenant', 'Tenant'),
+        ('investor', 'Investor'),
+        ('caretaker', 'Caretaker'),
+        ('leasing_agent', 'Leasing Agent'),
+        ('support_agent', 'Support Agent'),
+    ]
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='roles')
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100, choices=ROLES_NAMES)
+    description = models.TextField(blank=True, null=True)
+    scope = models.CharField(max_length=100, blank=True, null=True)
+    is_system_role = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Permission(models.Model):
+    MODULES = [
+        ('property', 'Property'),
+        ('lease', 'Lease'),
+        ('rent', 'Rent'),
+        ('maintenance', 'Maintenance'),
+    ]
+    ACTIONS = [
+        ('create', 'Create'),
+        ('read', 'Read'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('approve', 'Approve'),
+        ('assign', 'Assign'),
+        ('record_payment', 'Record Payment'),
+    ]
+    module = models.CharField(max_length=100, choices=MODULES)
+    action = models.CharField(max_length=100, choices=ACTIONS)
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+class RolePermission(models.Model):
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='role_permissions')
+    permission = models.ForeignKey(Permission, on_delete=models.CASCADE, related_name='permission_roles')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.role.name} - {self.permission.name}"
+
+
+
+class OrganizationMembership(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organization_memberships')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='memberships')
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='memberships')
+    employee_number = models.CharField(max_length=50, unique=True)
+    job_title = models.CharField(max_length=100, blank=True, null=True)
+    is_primary_contact = models.BooleanField(default=False)
+    invited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='invited_memberships')
+    is_active = models.BooleanField(default=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.organization.name} - {self.role.name}"
+
+class Portifolio(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='portifolios')
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_portifolios')
+    status = models.CharField(max_length=20, choices=(("active", "Active"), ("inactive", "Inactive")), default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.organization.name}"
+
+
+class Property(models.Model):
+    PROPERTY_TYPES = [
+        ('apartment', 'Apartment'),
+        ('house', 'House'),
+        ('office', 'Office'),
+        ('mall', 'Mall'),
+        ('warehouse', 'Warehouse'),
+        ('hostel', 'Hostel'),
+        ('residential', 'Residential'),
+        ('retail', 'Retail'),
+        ('warehouse', 'Warehouse'),
+        ('industrial', 'Industrial'),
+        ('land', 'Land'),
+        ('mixed_use', 'Mixed Use'),
+        ('student_housing', 'Student Housing'),
+        ('other', 'Other'),
+    ]
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='properties')
+    portifolio = models.ForeignKey(Portifolio, on_delete=models.CASCADE, related_name='properties')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_properties')
+    property_code = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=255)
+    property_type = models.CharField(max_length=100, choices=PROPERTY_TYPES)
+    ownership_type = models.CharField(max_length=100)
+    code = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    county = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    year_built = models.PositiveIntegerField(blank=True, null=True)
+    total_land_area = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=(("active", "Active"), ("inactive", "Inactive")), default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.portifolio.name}"
+
+
+class Building(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='buildings')
+    name = models.CharField(max_length=255)
+    building_code = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    year_built = models.PositiveIntegerField(blank=True, null=True)
+    number_of_floors = models.PositiveIntegerField()
+    status = models.CharField(max_length=20, choices=(("active", "Active"), ("inactive", "Inactive")), default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.property.name}"
+
+
+class Floor(models.Model):
+    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name='floors')
+    name = models.CharField(max_length=255)
+    floor_code = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    floor_number = models.PositiveIntegerField()
+    status = models.CharField(max_length=20, choices=(("active", "Active"), ("inactive", "Inactive")), default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.building.name}"
+
+
+class Unit(models.Model):
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('occupied', 'Occupied'),
+        ('under_maintenance', 'Under Maintenance'),
+    ]
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
+    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name='units')
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name='units')
+    name = models.CharField(max_length=255)
+    unit_code = models.CharField(max_length=100, unique=True)
+    unit_type = models.CharField(max_length=100)
+    bedrooms = models.PositiveIntegerField()
+    bathrooms = models.PositiveIntegerField()
+    square_footage = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    monthly_rent = models.DecimalField(max_digits=10, decimal_places=2)
+    deposit_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    service_charge = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="available")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.floor.name}"
+
+
+
+class Amenity(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    amenity_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class PropertyAmenity(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='property_amenity')
+    amenity = models.ForeignKey(Amenity, on_delete=models.CASCADE, related_name='amenity')
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.amenity.name
+
+
+
+class UnitAmenity(models.Model):
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='unit_amenity')
+    amenity = models.ForeignKey(Amenity, on_delete=models.CASCADE, related_name='amenity')
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.amenity.name
+
+
+class Asset(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='organization_asset')
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='property_asset')
+    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name='building_asset')
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='unit_asset')
+    asset_code = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    purchase_date = models.DateTimeField(auto_now_add=True)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
+    current_value = models.DecimalField(max_digits=10, decimal_places=2)
+    depreciation-method = models.CharField(max_digits=100)
+    useful_life_years = models.PositiveIntegerField()
+    warranty_expiry = models.DateTimeField()
+    condition = models.CharField(max_length=200)
+    status = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class AssetDepreciationEntries(model.Models):
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name='asset_depreciation')
+    period_start = models.DateTimeField(auto_now_add=True)
+    period_end = models.DateTimeField()
+    opening_value = models.DecimalField(max_digits=10, decimal_places=2)
+    depreciation_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    closing_value = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        return self.asset.name
+
+
+class Inspections(model.Models):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='organization_inspections')
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='property_inspections')
+    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name='building_inspections')
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='unit_inspections')
+    inspector = models.ForeignKey(User, on_delete=models.CASCADE, related_name='unit_inspector')
+    inspection_type = models.CharField(max_length=100)
+    scheduled_date = models.DateTimeField()
+    completed_at = models.DateTimeField()
+    status = models.CharField(max_length=100)
+    summary = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.inspection_type
+
+class InspectionItem(model.Models):
+    inspection = models.ForeignKey(Inspections, on_delete=models.CASCADE, related_name='inspection')
+    area = models.CharField(max_length=100)
+    item = models.CharField(max_length=100)
+    condition = models.CharField(max_length=100)
+    notes = models.TextField(blank=True, null=True)
+    requires_action = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.item
+
+
+class InspectionMedia(model.Models):
+    inspection_item = models.ForeignKey(InspectionItem, on_delete=models.CASCADE, related_name='inspection_item')
+    file_url = models.URLField()
+    file_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Item: {self.inspection_item.item}"
+
+
+# owners and property ownership
+class Owner(model.Models):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='organization')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user')
+    owner_type = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=15)
+    national_id_number = models.CharField(max_length=8)
+    registration_number = models.CharField(max_length=200)
+    kra_pin = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Owner: {self.user.first_name}, Email: {self.email}"
+
+
+class PropertyOwnership(model.Models):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='owner_property')
+    owner = models.ForeignKey(Owner, on_delete=models.CASCADE, related_name='owner_ownership')
+    ownership_percentage = models.DecimalField(max_digits=10, decimal_places=2)
+    effective_from = models.DateTimeField(auto_now_add=True)
+    effective_to = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Property: {property.name}, Owned by: {owner.user.first_name}"
+
+
 
 
 class Package(models.Model):
