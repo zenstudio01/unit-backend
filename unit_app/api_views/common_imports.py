@@ -41,7 +41,7 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 
 # models
-from unit_app.models import User, Package, Subscription, Property, Unit, Tenant, RentPayment, Notification, MaintenanceRequest, Company, CompanyService, Professional, CompanyBooking, CompanyBookingPayment, CompanyWallet, CompanyConversation, CompanyMessage, Announcement, CompanyStaff, Lease, RentInvoice, CompanyWalletTransaction, ServiceProvider
+from unit_app.models import User
 
 
 # =========================
