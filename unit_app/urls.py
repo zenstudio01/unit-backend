@@ -1,6 +1,10 @@
 from django.urls import path
 from . import views
 from .api_views.auth import *
+from .api_views.profile import *
+from .api_views.organization import *
+
+
 from .api_views.dashboard import *
 from .api_views.property import *
 from .api_views.tenants import *
@@ -26,15 +30,31 @@ urlpatterns = [
     path('health/', health, name='health'),
 
     # auth
-    path('send_test_email/', send_test_email, name='send_test_email'),
-    path('refresh_token/', refresh_token, name='refresh_token'),
-    path('signin/', signin, name='signin'),
-    path('signup/', signup, name='signup'),
-    path('delete_account/', delete_account, name='delete_account'),
-    path('verify_email/', verify_email, name='verify_email'),
-    path('request_reset/', request_reset, name='request_reset'),
-    path('reset_password/', reset_password, name='reset_password'),
-    path('auth_check/', auth_check, name='auth_check'),
+    path('auth/send_test_email/', send_test_email, name='send_test_email'),
+    path('auth/refresh_token/', refresh_token, name='refresh_token'),
+    path('auth/signin/', signin, name='signin'),
+    path('auth/signup/', signup, name='signup'),
+    path('auth/delete_account/', delete_account, name='delete_account'),
+    path('auth/verify_email/', verify_email, name='verify_email'),
+    path('auth/request_reset/', request_reset, name='request_reset'),
+    path('auth/reset_password/', reset_password, name='reset_password'),
+    path('auth/auth_check/', auth_check, name='auth_check'),
+    path('auth/verify_otp/', verify_otp, name='verify_otp'),
+
+    # profile
+    path('profile/complete_profile/', complete_profile, name='complete_profile'),
+
+
+    # organization
+    path('organization/create_organization/', create_organization, name='create_organization'),
+    path('organization/my_organizations/', my_organizations, name='my_organizations'),
+    path('organization/<int:organization_id>/my_organization_roles/', my_organization_roles, name='my_organization_roles'),
+
+
+
+
+
+
 
     # dashboard
     path('dashboard_metrics/', dashboard_metrics, name='dashboard_metrics'),

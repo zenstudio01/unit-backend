@@ -61,28 +61,21 @@ def get_user_companies(user):
 
 
 def serialize_user(user):
-    """
-    Standard user response used by signin and auth_check.
-    """
-
-    companies = get_user_companies(user)
 
     return {
         "user_id": user.id,
-        "full_name": user.full_name,
+        "first_name": user.first_name,
+        "middle_name": user.middle_name,
+        "last_name": user.last_name,
         "username": user.username,
         "email": user.email,
         "phone_number": user.phone_number,
         "phone_verified": user.phone_verified,
         "email_verified": user.email_verified,
         "profile_image": user.profile_image,
-        "platform_role": user.role,
+        "requested_role": user.role,
         "is_verified": user.is_verified,
-        "date_joined": user.date_joined.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-        "companies": companies,
-        "has_company": len(companies) > 0,
+        "date_joined": user.date_joined.strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
@@ -146,61 +139,32 @@ def send_test_email(request):
 # ============================================================
 # SIGNUP
 # ============================================================
-
 @api_view(["POST"])
 def signup(request):
     data = request.data
 
-    full_name = str(data.get("full_name", "")).strip()
+    first_name = str(data.get("first_name", "")).strip()
+    middle_name = str(data.get("middle_name", "")).strip()
+    last_name = str(data.get("last_name", "")).strip()
     email = str(data.get("email", "")).strip().lower()
     phone_number = str(data.get("phone_number", "")).strip()
     password = data.get("password")
+    requested_role = str(data.get("requested_role", "")).strip().lower()
 
-    create_company = normalize_boolean(
-        data.get("create_company", False)
-    )
-
-    # Company information
-    company_name = str(
-        data.get("company_name", "")
-    ).strip()
-
-    company_email = str(
-        data.get("company_email", email)
-    ).strip().lower()
-
-    company_phone_number = str(
-        data.get("company_phone_number", phone_number)
-    ).strip()
-
-    company_address = str(
-        data.get("company_address", "")
-    ).strip()
-
-    company_city = str(
-        data.get("company_city", "")
-    ).strip()
-
-    company_country = str(
-        data.get("company_country", "Kenya")
-    ).strip()
-
-    company_website = str(
-        data.get("company_website", "")
-    ).strip()
-
-    company_description = str(
-        data.get("company_description", "")
-    ).strip()
-
-    # --------------------------------------------------------
-    # Validate user fields
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # Validate required fields
+    # --------------------------------------------------
 
     missing_fields = []
 
-    if not full_name:
-        missing_fields.append("full_name")
+    if not first_name:
+        missing_fields.append("first_name")
+
+    if not middle_name:
+        missing_fields.append("middle_name")
+    
+    if not last_name:
+        missing_fields.append("last_name")
 
     if not email:
         missing_fields.append("email")
@@ -211,6 +175,9 @@ def signup(request):
     if not password:
         missing_fields.append("password")
 
+    if not requested_role:
+        missing_fields.append("requested_role")
+
     if missing_fields:
         return JsonResponse(
             {
@@ -220,174 +187,94 @@ def signup(request):
             status=400,
         )
 
-    # --------------------------------------------------------
-    # Validate company fields when company creation is requested
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # Validate requested role
+    # --------------------------------------------------
 
-    if create_company:
-        missing_company_fields = []
+    allowed_roles = [
+        "property_manager",
+        "landlord",
+        "tenant",
+        "project_manager",
+        "investor",
+        "service_provider",
+    ]
 
-        if not company_name:
-            missing_company_fields.append("company_name")
+    if requested_role not in allowed_roles:
+        return JsonResponse(
+            {
+                "message": "Invalid account role",
+            },
+            status=400,
+        )
 
-        if not company_email:
-            missing_company_fields.append("company_email")
-
-        if not company_phone_number:
-            missing_company_fields.append(
-                "company_phone_number"
-            )
-
-        if not company_address:
-            missing_company_fields.append(
-                "company_address"
-            )
-
-        if not company_city:
-            missing_company_fields.append("company_city")
-
-        if not company_country:
-            missing_company_fields.append(
-                "company_country"
-            )
-
-        if missing_company_fields:
-            return JsonResponse(
-                {
-                    "message": (
-                        "Missing required company fields"
-                    ),
-                    "fields": missing_company_fields,
-                },
-                status=400,
-            )
-
-    # --------------------------------------------------------
-    # Check duplicate user details
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # Duplicate validation
+    # --------------------------------------------------
 
     if User.objects.filter(email__iexact=email).exists():
-        return JsonResponse(
-            {"message": "Email already exists"},
-            status=400,
-        )
+        return JsonResponse({"message": "Email already exists"},status=400)
 
-    if User.objects.filter(username__iexact=email).exists():
-        return JsonResponse(
-            {"message": "Email already exists"},
-            status=400,
-        )
+    if User.objects.filter(phone_number=phone_number).exists():
+        return JsonResponse({"message": "Phone number already exists"},status=400)
 
-    if User.objects.filter(
-        phone_number=phone_number
-    ).exists():
-        return JsonResponse(
-            {"message": "Phone number already exists"},
-            status=400,
-        )
-
-    # --------------------------------------------------------
-    # Validate password using Django validators
-    # --------------------------------------------------------
+    # --------------------------------------------------
+    # Password validation
+    # --------------------------------------------------
 
     try:
         validate_password(password)
 
     except ValidationError as error:
-        return JsonResponse(
-            {
-                "message": "Password does not meet requirements",
-                "errors": list(error.messages),
-            },
-            status=400,
-        )
+        return JsonResponse({"message": "Password does not meet requirements","errors": list(error.messages),},status=400)
 
-    email_token = str(uuid.uuid4())
+    # --------------------------------------------------
+    # Generate OTP
+    # --------------------------------------------------
+
+    otp = str(
+        random.randint(100000, 999999)
+    )
 
     try:
         with transaction.atomic():
 
-            # Username remains the email because signin authenticates
-            # using the supplied email.
             user = User.objects.create_user(
                 username=email,
                 email=email,
                 password=password,
-                full_name=full_name,
+                first_name=first_name,
+                middle_name=middle_name,
+                last_name=last_name,
                 phone_number=phone_number,
+
+                # General account role.
                 role="user",
-                email_verification_token=email_token,
+
+                # Registration request
+                requested_role=requested_role,
+
                 email_verified=False,
+                is_active=True,
             )
 
-            company = None
-            membership = None
-            subscription = None
+            OTPVerification.objects.create(
+                user=user,
+                code=otp,
+                purpose="registration",
+                expires_at=(timezone.now() + timedelta(minutes=10)),
+            )
 
-            # ------------------------------------------------
-            # Create company onboarding records
-            # ------------------------------------------------
-
-            if create_company:
-                company = Company.objects.create(
-                    owner=user,
-                    name=company_name,
-                    email=company_email,
-                    phone_number=company_phone_number,
-                    address=company_address,
-                    city=company_city,
-                    country=company_country,
-                    website=company_website,
-                    description=company_description,
-                )
-
-                membership = CompanyStaff.objects.create(
-                    company=company,
-                    user=user,
-                    role="admin",
-                    is_active=True,
-                )
-
-                # Assumes CompanyWallet is OneToOneField and uses
-                # available_balance, pending_balance and reserved_balance.
-                CompanyWallet.objects.create(
-                    company=company,
-                    available_balance=0,
-                    pending_balance=0,
-                    reserved_balance=0,
-                )
-
-                starter_package = Package.objects.filter(
-                    name="starter bundle"
-                ).first()
-
-                if starter_package:
-                    subscription = Subscription.objects.create(
-                        company=company,
-                        package=starter_package,
-                        billing_cycle="monthly",
-                        start_date=timezone.now(),
-                        end_date=(
-                            timezone.now()
-                            + timedelta(
-                                days=starter_package.month_days
-                            )
-                        ),
-                        status="active",
-                    )
-
-        # Send email after the database transaction succeeds.
-        verification_link = (
-            "https://unit-backend-lof1.onrender.com/"
-            f"verify_email?token={email_token}"
-        )
+        # --------------------------------------------------
+        # Send OTP
+        # --------------------------------------------------
 
         email_sent = True
 
         try:
             send_email(
                 email,
-                "Verify Your Unit Account",
+                "Verify Your UNIT Account",
                 f"""
                 <div style="
                     font-family: Arial, sans-serif;
@@ -396,44 +283,34 @@ def signup(request):
                     padding: 20px;
                     color: #333;
                 ">
+
                     <h2 style="color: #2563EB;">
-                        Welcome to Unit
+                        Welcome to UNIT
                     </h2>
 
-                    <p>Hello {full_name},</p>
-
                     <p>
-                        Thank you for registering with Unit.
-                        Verify your email address to complete
-                        your account setup.
+                        Hello {first_name},
                     </p>
 
-                    <div style="margin: 30px 0;">
-                        <a
-                            href="{verification_link}"
-                            style="
-                                background-color: #2563EB;
-                                color: white;
-                                padding: 12px 24px;
-                                text-decoration: none;
-                                border-radius: 8px;
-                                font-weight: bold;
-                                display: inline-block;
-                            "
-                        >
-                            Verify Email
-                        </a>
+                    <p>
+                        Use the verification code below
+                        to complete your UNIT registration.
+                    </p>
+
+                    <div
+                        style="
+                            margin: 30px 0;
+                            font-size: 32px;
+                            font-weight: bold;
+                            letter-spacing: 8px;
+                            color: #2563EB;
+                        "
+                    >
+                        {otp}
                     </div>
 
                     <p>
-                        You can also copy and paste this link:
-                    </p>
-
-                    <p style="
-                        word-break: break-all;
-                        color: #2563EB;
-                    ">
-                        {verification_link}
+                        This code expires in 10 minutes.
                     </p>
 
                     <hr style="margin: 30px 0;" />
@@ -450,50 +327,131 @@ def signup(request):
                         font-size: 14px;
                         color: #777;
                     ">
-                        The Unit Team
+                        The UNIT Team
                     </p>
+
                 </div>
                 """,
             )
 
         except Exception as email_error:
             email_sent = False
+
             print(
                 "VERIFICATION EMAIL ERROR:",
                 str(email_error),
             )
 
-        response = {
-            "message": (
-                "Account created successfully. "
-                "Verify your email."
-            ),
-            "email_sent": email_sent,
-            "user": serialize_user(user),
-        }
+        return JsonResponse(
+            {
+                "message":
+                    "Account created successfully. "
+                    "Enter the verification code sent "
+                    "to your email.",
 
-        if company:
-            response["company"] = {
-                "company_id": company.id,
-                "company_name": company.name,
-                "staff_role": membership.role,
-                "subscription_created": (
-                    subscription is not None
-                ),
-            }
+                "email_sent": email_sent,
 
-        return JsonResponse(response, status=201)
+                "requires_verification": True,
 
-    except Exception as e:
-        print("SIGNUP ERROR:", str(e))
+                "next_step": "verify_otp",
+
+                "user": serialize_user(user),
+            },
+            status=201,
+        )
+
+    except Exception as error:
+        print(
+            "SIGNUP ERROR:",
+            str(error),
+        )
 
         return JsonResponse(
             {
-                "message": "Signup failed",
-                "error": str(e),
+                "message":
+                    "Unable to create account.",
             },
             status=500,
         )
+
+
+
+# verify OTP api
+@api_view(["POST"])
+def verify_otp(request):
+    email = str(request.data.get("email", "")).strip().lower()
+    otp = str(request.data.get("otp", "")).strip()
+
+    if not email or not otp:
+        return JsonResponse({"message": "Email and OTP are required"},status=400)
+    try:
+        user = User.objects.get(
+            email__iexact=email
+        )
+
+    except User.DoesNotExist:
+        return JsonResponse({"message": "Account not found"},status=404)
+
+    verification = (
+        OTPVerification.objects
+        .filter(
+            user=user,
+            code=otp,
+            purpose="registration",
+            is_used=False,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if not verification:
+        return JsonResponse(
+            {
+                "message":
+                    "Invalid verification code",
+            },
+            status=400,
+        )
+
+    if (
+        verification.expires_at
+        < timezone.now()
+    ):
+        return JsonResponse(
+            {
+                "message":
+                    "Verification code has expired",
+            },
+            status=400,
+        )
+
+    with transaction.atomic():
+
+        verification.is_used = True
+        verification.save(
+            update_fields=["is_used"]
+        )
+
+        user.email_verified = True
+        user.save(
+            update_fields=[
+                "email_verified",
+            ]
+        )
+    
+    refresh = RefreshToken.for_user(user)
+    return JsonResponse(
+        {
+            "message":"Account verified successfully",
+            "next_step": "complete_profile",
+            "requested_role": user.requested_role,
+            "access_token":str(refresh.access_token),
+            "refresh_token":str(refresh),
+        }
+    )
+
+
+
 
 
 # ============================================================
