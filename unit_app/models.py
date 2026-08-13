@@ -329,6 +329,33 @@ class Property(models.Model):
         return f"{self.name} - {self.portifolio.name}"
 
 
+class PropertyImage(models.Model):
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+
+    image_url = models.URLField()
+
+    public_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    is_cover = models.BooleanField(
+        default=False,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return f"{self.property.name} - Image"
+
+
 class Building(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='buildings')
     name = models.CharField(max_length=255)
@@ -1378,6 +1405,82 @@ class MaintenanceWarranty(models.Model):
             f"{self.maintenance_ticket.ticket_number} - "
             f"({self.status})"
         )
+
+
+
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ("maintenance", "Maintenance"),
+        ("payment", "Payment"),
+        ("lease", "Lease"),
+        ("tenant", "Tenant"),
+        ("property", "Property"),
+        ("invoice", "Invoice"),
+        ("organization", "Organization"),
+        ("system", "System"),
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
+
+    notification_type = models.CharField(
+        max_length=50,
+        choices=NOTIFICATION_TYPES,
+        default="system",
+    )
+
+    title = models.CharField(
+        max_length=255,
+    )
+
+    message = models.TextField()
+
+    reference_id = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    property = models.ForeignKey(
+        "Property",
+        on_delete=models.SET_NULL,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
+
+    is_read = models.BooleanField(
+        default=False,
+    )
+
+    read_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-created_at",
+        ]
+
+    def __str__(self):
+        return f"{self.title} - {self.user}"
 
 
 

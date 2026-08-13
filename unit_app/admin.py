@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, UserProfile, UserSession, OTPVerification, Organization, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, Portifolio, Property, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty
+from .models import User, UserProfile, UserSession, OTPVerification, Organization, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification
 
 
 admin.site.register(User)
@@ -14,6 +14,7 @@ admin.site.register(RolePermission)
 admin.site.register(OrganizationMembership)
 admin.site.register(Portifolio)
 admin.site.register(Property)
+admin.site.register(PropertyImage)
 admin.site.register(Building)
 admin.site.register(Floor)
 admin.site.register(Unit)
@@ -50,6 +51,7 @@ admin.site.register(MaintenanceComment)
 admin.site.register(MaintenanceStatusHistory)
 admin.site.register(MaintenanceApproval)
 admin.site.register(MaintenanceWarranty)
+admin.site.register(Notification)
 
 
 

@@ -3,9 +3,12 @@ from . import views
 from .api_views.auth import *
 from .api_views.profile import *
 from .api_views.organization import *
-
-
 from .api_views.dashboard import *
+from .api_views.properties import *
+from .api_views.finance import *
+
+
+
 from .api_views.property import *
 from .api_views.tenants import *
 from .api_views.admin import *
@@ -50,14 +53,33 @@ urlpatterns = [
     path('organization/my_organizations/', my_organizations, name='my_organizations'),
     path('organization/<int:organization_id>/my_organization_roles/', my_organization_roles, name='my_organization_roles'),
 
+    # notifications
+    path("notifications/", get_notifications, name="get_notifications"),
+    path("notifications/<int:notification_id>/read/", mark_notification_read, name="mark_notification_read"),
+    path("notifications/mark_all_read/", mark_all_notifications_read, name="mark_all_notifications_read"),
+    path("notifications/unread_count/", notification_unread_count, name="notification_unread_count"),
+
+    # propert manager dashboard
+    path("dashboard/manager/", manager_dashboard, name="manager_dashboard"),
+
+    # properties
+    path("properties/", get_properties, name="get_properties"),
+    path("properties/form_options/", property_form_options, name="property_form_options"),
+    path("properties/create/", create_property, name="create_property"),
+
+    # maintenance
+    path("maintenance/", get_manager_maintenance_tickets, name="get_manager_maintenance_tickets"),
+
+    # finance
+    path("finance/manager/", manager_finance_dashboard, name="manager_finance_dashboard"),
 
 
 
 
 
 
-    # dashboard
-    path('dashboard_metrics/', dashboard_metrics, name='dashboard_metrics'),
+
+
 
     # property
     path('property_list/', property_list, name='property_list'),
@@ -120,7 +142,6 @@ urlpatterns = [
     path("update_maintenance_status/<int:request_id>/", update_maintenance_status, name='update_maintenance_status'),
     path("property_manager_maintenance_requests/", property_manager_maintenance_requests, name='property_manager_maintenance_requests'),
     path("update_maintenance_status/<int:request_id>/", update_maintenance_status, name='update_maintenance_status'),
-    path("get_maintenance_requests/", get_maintenance_requests, name="get_maintenance_requests"),
 
     # property manager announcements
     path("create_announcement/", create_announcement, name='create_announcement'),

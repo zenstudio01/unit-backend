@@ -1,600 +1,302 @@
 from .common_imports import *
 
-from django.db.models import Q
 
-
-# ============================================================
-# HELPERS
-# ============================================================
-
-def normalize_boolean(value):
-    if isinstance(value, bool):
-        return value
-
-    if value is None:
-        return None
-
-    normalized = str(value).strip().lower()
-
-    if normalized in {"true", "1", "yes", "on"}:
-        return True
-
-    if normalized in {"false", "0", "no", "off"}:
-        return False
-
-    return None
-
-
-def serialize_notification(notification):
-    return {
-        "id": notification.id,
-        "title": notification.title,
-        "message": notification.message,
-        "is_read": notification.is_read,
-        "notification_type": getattr(
-            notification,
-            "notification_type",
-            None,
-        ),
-        "company": (
-            {
-                "id": notification.company_id,
-                "name": notification.company.name,
-            }
-            if getattr(notification, "company_id", None)
-            else None
-        ),
-        "data": getattr(
-            notification,
-            "data",
-            None,
-        ),
-        "created_at": notification.created_at.isoformat(),
-        "updated_at": (
-            notification.updated_at.isoformat()
-            if getattr(notification, "updated_at", None)
-            else None
-        ),
-    }
-
-
-# ============================================================
-# GET USER NOTIFICATIONS
-# ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_notifications(request):
-    try:
-        company_id = request.GET.get("company_id")
+    user = request.user
 
-        search_query = str(
-            request.GET.get("search", "")
-        ).strip()
+    organization_id = request.GET.get(
+        "organization_id"
+    )
 
-        notification_type = str(
-            request.GET.get("type", "")
-        ).strip()
+    notification_type = request.GET.get(
+        "type"
+    )
 
-        is_read_param = request.GET.get("is_read")
+    unread = request.GET.get(
+        "unread"
+    )
 
-        try:
-            page = max(
-                int(request.GET.get("page", 1)),
-                1,
-            )
-        except (TypeError, ValueError):
-            page = 1
+    search = str(
+        request.GET.get("search", "")
+    ).strip()
 
-        try:
-            page_size = int(
-                request.GET.get("page_size", 20)
-            )
+    notifications = (
+        Notification.objects
+        .filter(user=user)
+        .select_related(
+            "organization",
+            "property",
+        )
+    )
 
-            page_size = min(
-                max(page_size, 1),
-                100,
-            )
+    # ----------------------------------------
+    # Organization filter
+    # ----------------------------------------
 
-        except (TypeError, ValueError):
-            page_size = 20
+    if organization_id:
+        notifications = notifications.filter(
+            organization_id=organization_id
+        )
+
+    # ----------------------------------------
+    # Notification type filter
+    # ----------------------------------------
+
+    if notification_type:
+        notifications = notifications.filter(
+            notification_type=
+                notification_type
+        )
+
+    # ----------------------------------------
+    # Unread filter
+    # ----------------------------------------
+
+    if unread == "true":
+        notifications = notifications.filter(
+            is_read=False
+        )
+
+    # ----------------------------------------
+    # Search
+    # ----------------------------------------
+
+    if search:
+        from django.db.models import Q
 
         notifications = (
-            Notification.objects
-            .filter(user=request.user)
-            .select_related("company")
-            .order_by("-created_at")
+            notifications.filter(
+                Q(
+                    title__icontains=
+                        search
+                )
+                |
+                Q(
+                    message__icontains=
+                        search
+                )
+                |
+                Q(
+                    property__name__icontains=
+                        search
+                )
+            )
         )
 
-        if company_id:
-            membership_exists = (
-                CompanyStaff.objects
-                .filter(
-                    user=request.user,
-                    company_id=company_id,
-                    is_active=True,
-                )
-                .exists()
-            )
+    notifications = notifications.order_by(
+        "-created_at"
+    )
 
-            if not membership_exists:
-                return Response(
+    data = []
+
+    for notification in notifications:
+        data.append(
+            {
+                "id":
+                    notification.id,
+
+                "type":
+                    notification.notification_type,
+
+                "title":
+                    notification.title,
+
+                "message":
+                    notification.message,
+
+                "reference_id":
+                    notification.reference_id,
+
+                "is_read":
+                    notification.is_read,
+
+                "read_at":
+                    (
+                        notification.read_at.isoformat()
+                        if notification.read_at
+                        else None
+                    ),
+
+                "created_at":
+                    notification.created_at.isoformat(),
+
+                "property": (
                     {
-                        "success": False,
-                        "message": (
-                            "You do not have access to this "
-                            "company's notifications."
-                        ),
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                        "id":
+                            notification.property.id,
 
-            notifications = notifications.filter(
-                company_id=company_id
-            )
+                        "name":
+                            notification.property.name,
+                    }
+                    if notification.property
+                    else None
+                ),
 
-        if notification_type:
-            notifications = notifications.filter(
-                notification_type=notification_type
-            )
+                "property_name": (
+                    notification.property.name
+                    if notification.property
+                    else None
+                ),
 
-        if is_read_param is not None:
-            is_read = normalize_boolean(
-                is_read_param
-            )
-
-            if is_read is None:
-                return Response(
+                "organization": (
                     {
-                        "success": False,
-                        "message": (
-                            "is_read must be true or false."
-                        ),
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                        "id":
+                            notification.organization.id,
 
-            notifications = notifications.filter(
-                is_read=is_read
-            )
-
-        if search_query:
-            notifications = notifications.filter(
-                Q(title__icontains=search_query)
-                | Q(message__icontains=search_query)
-            )
-
-        total_count = notifications.count()
-
-        unread_count = notifications.filter(
-            is_read=False
-        ).count()
-
-        start_index = (page - 1) * page_size
-        end_index = start_index + page_size
-
-        notifications_page = notifications[
-            start_index:end_index
-        ]
-
-        data = [
-            serialize_notification(notification)
-            for notification in notifications_page
-        ]
-
-        return Response(
-            {
-                "success": True,
-                "count": len(data),
-                "total_count": total_count,
-                "unread_count": unread_count,
-                "page": page,
-                "page_size": page_size,
-                "has_next": end_index < total_count,
-                "notifications": data,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    except Exception as error:
-        print(
-            "GET NOTIFICATIONS ERROR:",
-            str(error),
-        )
-
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while retrieving "
-                    "notifications."
+                        "name":
+                            notification.organization.name,
+                    }
+                    if notification.organization
+                    else None
                 ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            }
         )
 
+    unread_count = (
+        notifications
+        .filter(is_read=False)
+        .count()
+    )
 
-# ============================================================
-# GET SINGLE NOTIFICATION
-# ============================================================
+    return JsonResponse(
+        {
+            "notifications":
+                data,
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_notification(request, notification_id):
-    try:
-        notification = (
-            Notification.objects
-            .select_related("company")
-            .filter(
-                id=notification_id,
-                user=request.user,
-            )
-            .first()
-        )
+            "count":
+                len(data),
 
-        if not notification:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Notification not found.",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        return Response(
-            {
-                "success": True,
-                "notification": serialize_notification(
-                    notification
-                ),
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    except Exception as error:
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while retrieving "
-                    "the notification."
-                ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+            "unread_count":
+                unread_count,
+        },
+        status=200,
+    )
 
 
-# ============================================================
-# MARK ONE NOTIFICATION AS READ
-# ============================================================
 
-@api_view(["POST", "PATCH"])
+@api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def mark_notification_read(
     request,
     notification_id,
 ):
-    try:
-        notification = (
-            Notification.objects
-            .filter(
-                id=notification_id,
-                user=request.user,
-            )
-            .first()
-        )
+    user = request.user
 
-        if not notification:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Notification not found.",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+    notification = get_object_or_404(
+        Notification,
+        id=notification_id,
+        user=user,
+    )
 
-        if notification.is_read:
-            return Response(
-                {
-                    "success": True,
-                    "message": (
-                        "Notification is already marked "
-                        "as read."
-                    ),
-                    "notification": (
-                        serialize_notification(
-                            notification
-                        )
-                    ),
-                },
-                status=status.HTTP_200_OK,
-            )
-
+    if not notification.is_read:
         notification.is_read = True
+        notification.read_at = (
+            timezone.now()
+        )
 
         notification.save(
-            update_fields=["is_read"]
+            update_fields=[
+                "is_read",
+                "read_at",
+            ]
         )
 
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Notification marked as read."
-                ),
-                "notification": serialize_notification(
-                    notification
-                ),
+    return JsonResponse(
+        {
+            "message":
+                "Notification marked as read.",
+
+            "notification": {
+                "id":
+                    notification.id,
+
+                "is_read":
+                    notification.is_read,
+
+                "read_at":
+                    (
+                        notification.read_at.isoformat()
+                        if notification.read_at
+                        else None
+                    ),
             },
-            status=status.HTTP_200_OK,
-        )
-
-    except Exception as error:
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while marking "
-                    "the notification as read."
-                ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        },
+        status=200,
+    )
 
 
-# ============================================================
-# MARK ONE NOTIFICATION AS UNREAD
-# ============================================================
 
-@api_view(["POST", "PATCH"])
-@permission_classes([IsAuthenticated])
-def mark_notification_unread(
-    request,
-    notification_id,
-):
-    try:
-        notification = (
-            Notification.objects
-            .filter(
-                id=notification_id,
-                user=request.user,
-            )
-            .first()
-        )
-
-        if not notification:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Notification not found.",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        notification.is_read = False
-
-        notification.save(
-            update_fields=["is_read"]
-        )
-
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Notification marked as unread."
-                ),
-                "notification": serialize_notification(
-                    notification
-                ),
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    except Exception as error:
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while marking "
-                    "the notification as unread."
-                ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-
-# ============================================================
-# MARK ALL USER NOTIFICATIONS AS READ
-# ============================================================
-
-@api_view(["POST", "PATCH"])
+@api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def mark_all_notifications_read(request):
-    try:
-        company_id = request.data.get("company_id")
+    user = request.user
 
-        notifications = Notification.objects.filter(
-            user=request.user,
+    organization_id = request.data.get(
+        "organization_id"
+    )
+
+    notifications = (
+        Notification.objects
+        .filter(
+            user=user,
             is_read=False,
         )
+    )
 
-        if company_id:
-            membership_exists = (
-                CompanyStaff.objects
-                .filter(
-                    user=request.user,
-                    company_id=company_id,
-                    is_active=True,
-                )
-                .exists()
-            )
-
-            if not membership_exists:
-                return Response(
-                    {
-                        "success": False,
-                        "message": (
-                            "You do not have access to this "
-                            "company's notifications."
-                        ),
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            notifications = notifications.filter(
-                company_id=company_id
-            )
-
-        updated_count = notifications.update(
-            is_read=True
+    if organization_id:
+        notifications = notifications.filter(
+            organization_id=
+                organization_id
         )
 
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Notifications marked as read."
-                ),
-                "updated_count": updated_count,
-            },
-            status=status.HTTP_200_OK,
-        )
+    updated = notifications.update(
+        is_read=True,
+        read_at=timezone.now(),
+    )
 
-    except Exception as error:
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while marking "
-                    "notifications as read."
-                ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    return JsonResponse(
+        {
+            "message":
+                "All notifications marked as read.",
+
+            "updated":
+                updated,
+        },
+        status=200,
+    )
 
 
-# ============================================================
-# DELETE ONE NOTIFICATION
-# ============================================================
 
-@api_view(["DELETE"])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def delete_notification(
-    request,
-    notification_id,
-):
-    try:
-        notification = Notification.objects.filter(
-            id=notification_id,
-            user=request.user,
-        ).first()
+def notification_unread_count(request):
+    user = request.user
 
-        if not notification:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Notification not found.",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+    organization_id = request.GET.get(
+        "organization_id"
+    )
 
-        notification.delete()
+    notifications = (
+        Notification.objects
+        .filter(
+            user=user,
+            is_read=False,
+        )
+    )
 
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Notification deleted successfully."
-                ),
-            },
-            status=status.HTTP_200_OK,
+    if organization_id:
+        notifications = notifications.filter(
+            organization_id=
+                organization_id
         )
 
-    except Exception as error:
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while deleting "
-                    "the notification."
-                ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-
-# ============================================================
-# DELETE ALL READ NOTIFICATIONS
-# ============================================================
-
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
-def delete_read_notifications(request):
-    try:
-        company_id = request.data.get(
-            "company_id"
-        )
-
-        notifications = Notification.objects.filter(
-            user=request.user,
-            is_read=True,
-        )
-
-        if company_id:
-            membership_exists = (
-                CompanyStaff.objects
-                .filter(
-                    user=request.user,
-                    company_id=company_id,
-                    is_active=True,
-                )
-                .exists()
-            )
-
-            if not membership_exists:
-                return Response(
-                    {
-                        "success": False,
-                        "message": (
-                            "You do not have access to this "
-                            "company's notifications."
-                        ),
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            notifications = notifications.filter(
-                company_id=company_id
-            )
-
-        deleted_count, _ = notifications.delete()
-
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Read notifications deleted successfully."
-                ),
-                "deleted_count": deleted_count,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    except Exception as error:
-        return Response(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while deleting "
-                    "read notifications."
-                ),
-                "error": str(error),
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    return JsonResponse(
+        {
+            "unread_count":
+                notifications.count()
+        },
+        status=200,
+    )

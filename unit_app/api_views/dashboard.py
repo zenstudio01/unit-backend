@@ -1,144 +1,800 @@
 from .common_imports import *
 
-@api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-def dashboard_metrics(request):
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def manager_dashboard(request):
     user = request.user
-    role = user.role.lower()  # Match database lowercase mapping
-    
-    # -------------------------------------------------------------
-    # 1. PROPERTY MANAGER (PM) OR LANDLORD DATA ARCHITECTURE
-    # -------------------------------------------------------------
-    if role in ['property manager', 'landlord']:
-        # Filter properties based on ownership tier
-        if role == 'property manager':
-            properties = Property.objects.filter(owner=user)
-        else:
-            properties = Property.objects.filter(landlord=user)
 
-        property_count = properties.count()
-        units = Unit.objects.filter(property__in=properties)
-        total_units_count = units.count()
-        
-        # Calculate distinct active tenants under management
-        active_tenants = Tenant.objects.filter(unit__in=units, is_active=True)
-        tenant_count = active_tenants.count()
-        
-        # Calculate Occupancy Stats safely
-        occupied_count = units.filter(status='occupied').count()
-        vacant_count = units.filter(status='available').count()
-        occupancy_rate = int((occupied_count / total_units_count * 100)) if total_units_count > 0 else 0
-        vacant_rate = 100 - occupancy_rate if total_units_count > 0 else 0
+    organization_id = request.GET.get(
+        "organization_id"
+    )
 
-        # Calculate monthly cash collection sums
-        current_month = timezone.now().month
-        current_year = timezone.now().year
-        monthly_collection = RentPayment.objects.filter(
-            tenant__in=active_tenants,
-            is_paid=True,
-            payment_date__month=current_month,
-            payment_date__year=current_year
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
-        # Maintenance counts
-        open_tickets = MaintenanceRequest.objects.filter(unit__in=units, status='pending').count()
-        in_progress_tickets = MaintenanceRequest.objects.filter(unit__in=units, status='in_progress').count()
-        resolved_tickets = MaintenanceRequest.objects.filter(unit__in=units, status='completed').count()
-
-        # Build dynamic contextual feed entries
-        activities = []
-        recent_payments = RentPayment.objects.filter(tenant__in=active_tenants, is_paid=True).order_by('-payment_date')[:2]
-        for payment in recent_payments:
-            activities.append(f"{payment.tenant.user.full_name} paid rent via M-Pesa STK for {payment.tenant.unit.name}")
-        
-        recent_requests = MaintenanceRequest.objects.filter(unit__in=units).order_by('-created_at')[:2]
-        for req in recent_requests:
-            activities.append(f"New status update '{req.status}' for request on {req.unit.name}: {req.description[:30]}...")
-
-        # Guard against completely empty feeds
-        if not activities:
-            activities = ["System initialized successfully. Standing by for operations logs."]
-
-        # Standardize matching JSON keys expected by UI state structure maps
-        frontend_role = "PM" if role == "property manager" else "LANDLORD"
-        
-        stats = []
-        if frontend_role == "PM":
-            stats = [
-                { "title": "Managed Properties", "value": str(property_count), "color": "bg-[#0A4429]" },
-                { "title": "Total Tenants", "value": str(tenant_count), "color": "bg-[#2E9D47]" },
-                { "title": "Monthly Collection", "value": f"KES {monthly_collection:,.0f}", "color": "bg-[#0A4429]" },
-                { "title": "Open Tickets", "value": str(open_tickets), "color": "bg-amber-600" }
-            ]
-        else:
-            stats = [
-                { "title": "Owned Portfolios", "value": str(property_count), "color": "bg-[#0A4429]" },
-                { "title": "Occupancy Rate", "value": f"{occupancy_rate}%", "color": "bg-[#2E9D47]" },
-                { "title": "Net Payouts", "value": f"KES {monthly_collection:,.0f}", "color": "bg-[#0A4429]" },
-                { "title": "Pending Expenses", "value": "KES 0", "color": "bg-red-600" }
-            ]
-
-        return Response({
-            "role": frontend_role,
-            "title": "Property Manager Dashboard" if frontend_role == "PM" else "Landlord Portfolio Insights",
-            "stats": stats,
-            "activities": activities,
-            "occupancy_summary": {
-                "occupied_value": f"{occupied_count} ({occupancy_rate}%)",
-                "occupied_percent": occupancy_rate,
-                "vacant_value": f"{vacant_count} ({vacant_rate}%)",
-                "vacant_percent": vacant_rate
+    if not organization_id:
+        return JsonResponse(
+            {
+                "message":
+                    "organization_id is required."
             },
-            "maintenance_health": {
-                "pending": open_tickets,
-                "in_progress": in_progress_tickets,
-                "resolved": resolved_tickets
+            status=400,
+        )
+
+    # =====================================================
+    # VERIFY ORGANIZATION
+    # =====================================================
+
+    try:
+        organization = (
+            Organization.objects.get(
+                id=organization_id
+            )
+        )
+
+    except Organization.DoesNotExist:
+        return JsonResponse(
+            {
+                "message":
+                    "Organization not found."
+            },
+            status=404,
+        )
+
+    # =====================================================
+    # VERIFY USER MEMBERSHIP
+    # =====================================================
+
+    try:
+        membership = (
+            OrganizationMembership.objects
+            .prefetch_related("roles")
+            .get(
+                organization=organization,
+                user=user,
+                is_active=True,
+            )
+        )
+
+    except OrganizationMembership.DoesNotExist:
+        return JsonResponse(
+            {
+                "message":
+                    "You do not have access to this organization."
+            },
+            status=403,
+        )
+
+    # =====================================================
+    # PROPERTIES
+    # =====================================================
+
+    properties = (
+        Property.objects
+        .filter(
+            organization=organization,
+            status="active",
+        )
+        .order_by("-created_at")
+    )
+
+    property_count = properties.count()
+
+    # =====================================================
+    # UNITS
+    # =====================================================
+
+    units = (
+        Unit.objects
+        .filter(
+            property__organization=
+                organization
+        )
+    )
+
+    total_units = units.count()
+
+    occupied_units = (
+        units
+        .filter(
+            status="occupied"
+        )
+        .count()
+    )
+
+    vacant_units = (
+        units
+        .filter(
+            status="vacant"
+        )
+        .count()
+    )
+
+    # =====================================================
+    # ACTIVE LEASES
+    # =====================================================
+
+    active_leases = (
+        Lease.objects
+        .filter(
+            organization=organization,
+            status="active",
+        )
+        .select_related(
+            "unit",
+            "unit__property",
+        )
+        .prefetch_related(
+            "lease_tenants",
+            "lease_tenants__tenant",
+        )
+    )
+
+    # =====================================================
+    # TENANTS
+    #
+    # Lease does not have tenant_id directly.
+    # Tenant relationships are stored in LeaseTenant.
+    # =====================================================
+
+    tenants_count = (
+        active_leases
+        .values(
+            "lease_tenants__tenant_id"
+        )
+        .exclude(
+            lease_tenants__tenant_id__isnull=True
+        )
+        .distinct()
+        .count()
+    )
+
+    # =====================================================
+    # CURRENT BILLING PERIOD
+    # =====================================================
+
+    now = timezone.now()
+
+    month_start = now.replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    if month_start.month == 12:
+        next_month = (
+            month_start.replace(
+                year=
+                    month_start.year + 1,
+                month=1,
+            )
+        )
+
+    else:
+        next_month = (
+            month_start.replace(
+                month=
+                    month_start.month + 1
+            )
+        )
+
+    # =====================================================
+    # EXPECTED RENT
+    #
+    # Lease uses monthly_rent.
+    # =====================================================
+
+    rent_expected = (
+        active_leases
+        .aggregate(
+            total=Sum(
+                "monthly_rent"
+            )
+        )["total"]
+        or Decimal("0.00")
+    )
+
+    # =====================================================
+    # RENT COLLECTED
+    # =====================================================
+
+    rent_collected = (
+        Payment.objects
+        .filter(
+            organization=organization,
+            status="completed",
+            paid_at__gte=
+                month_start,
+            paid_at__lt=
+                next_month,
+        )
+        .aggregate(
+            total=Sum("amount")
+        )["total"]
+        or Decimal("0.00")
+    )
+
+    # =====================================================
+    # ARREARS
+    # =====================================================
+
+    arrears = max(
+        rent_expected - rent_collected,
+        Decimal("0.00"),
+    )
+
+    # =====================================================
+    # MAINTENANCE
+    # =====================================================
+
+    maintenance = (
+        MaintenanceTicket.objects
+        .filter(
+            organization=organization
+        )
+    )
+
+    open_maintenance = (
+        maintenance
+        .exclude(
+            status__in=[
+                "completed",
+                "closed",
+                "cancelled",
+            ]
+        )
+        .count()
+    )
+
+    urgent_maintenance = (
+        maintenance
+        .filter(
+            priority="urgent"
+        )
+        .exclude(
+            status__in=[
+                "completed",
+                "closed",
+                "cancelled",
+            ]
+        )
+        .count()
+    )
+
+    in_progress_maintenance = (
+        maintenance
+        .filter(
+            status="in_progress"
+        )
+        .count()
+    )
+
+    completed_maintenance = (
+        maintenance
+        .filter(
+            status="completed"
+        )
+        .count()
+    )
+
+    # =====================================================
+    # LEASE EXPIRIES
+    # =====================================================
+
+    today = timezone.now().date()
+
+    expiry_limit = (
+        today
+        + timedelta(days=30)
+    )
+
+    expiring_leases = (
+        active_leases
+        .filter(
+            end_date__gte=today,
+            end_date__lte=
+                expiry_limit,
+        )
+        .order_by("end_date")
+    )
+
+    # =====================================================
+    # EXPIRING LEASE DATA
+    # =====================================================
+
+    leases_data = []
+
+    for lease in expiring_leases[:5]:
+
+        lease_tenant = (
+            lease.lease_tenants
+            .select_related(
+                "tenant"
+            )
+            .first()
+        )
+
+        tenant = (
+            lease_tenant.tenant
+            if lease_tenant
+            else None
+        )
+
+        tenant_name = ""
+
+        if tenant:
+            tenant_name = " ".join(
+                filter(
+                    None,
+                    [
+                        getattr(
+                            tenant,
+                            "first_name",
+                            "",
+                        ),
+
+                        getattr(
+                            tenant,
+                            "middle_name",
+                            "",
+                        ),
+
+                        getattr(
+                            tenant,
+                            "last_name",
+                            "",
+                        ),
+                    ],
+                )
+            )
+
+        property_obj = None
+
+        if (
+            lease.unit
+            and getattr(
+                lease.unit,
+                "property",
+                None,
+            )
+        ):
+            property_obj = (
+                lease.unit.property
+            )
+
+        leases_data.append(
+            {
+                "id":
+                    lease.id,
+
+                "lease_number":
+                    getattr(
+                        lease,
+                        "lease_number",
+                        "",
+                    ),
+
+                "tenant_name":
+                    tenant_name,
+
+                "property_name":
+                    (
+                        property_obj.name
+                        if property_obj
+                        else ""
+                    ),
+
+                "unit_number":
+                    (
+                        lease.unit.unit_number
+                        if lease.unit
+                        else ""
+                    ),
+
+                "monthly_rent":
+                    float(
+                        lease.monthly_rent
+                        or 0
+                    ),
+
+                "end_date":
+                    (
+                        lease.end_date
+                        .isoformat()
+                    ),
+
+                "days_remaining":
+                    (
+                        lease.end_date
+                        - today
+                    ).days,
             }
-        })
+        )
 
-    # -------------------------------------------------------------
-    # 2. SERVICE PROVIDER (FUNDI) DATA ARCHITECTURE
-    # -------------------------------------------------------------
-    elif role == 'service provider':
+    # =====================================================
+    # PROPERTY CARDS
+    # =====================================================
+
+    property_data = []
+
+    for property_obj in properties[:10]:
+
+        property_units = (
+            units.filter(
+                property=property_obj
+            )
+        )
+
+        property_total_units = (
+            property_units.count()
+        )
+
+        property_occupied_units = (
+            property_units
+            .filter(
+                status="occupied"
+            )
+            .count()
+        )
+
+        property_vacant_units = (
+            property_units
+            .filter(
+                status="vacant"
+            )
+            .count()
+        )
+
+        # -------------------------------------------------
+        # Property Rent Collection
+        # -------------------------------------------------
+        #
+        # If Payment has a property FK,
+        # this query works directly.
+        #
+        # -------------------------------------------------
+
+        property_payments = (
+            Payment.objects
+            .filter(
+                organization=organization,
+                property=property_obj,
+                status="completed",
+                paid_at__gte=
+                    month_start,
+                paid_at__lt=
+                    next_month,
+            )
+            .aggregate(
+                total=Sum("amount")
+            )["total"]
+            or Decimal("0.00")
+        )
+
+        # -------------------------------------------------
+        # Property image
+        # -------------------------------------------------
+
+        property_image = getattr(
+            property_obj,
+            "image",
+            None,
+        )
+
+        if property_image:
+            try:
+                property_image = (
+                    property_image.url
+                )
+            except Exception:
+                property_image = str(
+                    property_image
+                )
+
+        property_data.append(
+            {
+                "id":
+                    property_obj.id,
+
+                "name":
+                    property_obj.name,
+
+                "location":
+                    ", ".join(
+                        filter(
+                            None,
+                            [
+                                getattr(
+                                    property_obj,
+                                    "city",
+                                    "",
+                                ),
+
+                                getattr(
+                                    property_obj,
+                                    "county",
+                                    "",
+                                ),
+                            ],
+                        )
+                    ),
+
+                "image":
+                    property_image,
+
+                "total_units":
+                    property_total_units,
+
+                "occupied_units":
+                    property_occupied_units,
+
+                "vacant_units":
+                    property_vacant_units,
+
+                "rent_collected":
+                    float(
+                        property_payments
+                    ),
+            }
+        )
+
+    # =====================================================
+    # ARREARS SUMMARY
+    # =====================================================
+    #
+    # Once Invoice is fully wired,
+    # calculate this from invoice balances.
+    #
+    # =====================================================
+
+    tenants_in_arrears = 0
+
+    # =====================================================
+    # NOTIFICATIONS
+    # =====================================================
+
+    unread_notifications = (
+        Notification.objects
+        .filter(
+            user=user,
+            organization=organization,
+            is_read=False,
+        )
+        .count()
+    )
+
+    # =====================================================
+    # RECENT ACTIVITIES
+    #
+    # We currently use notifications as dashboard
+    # activity records.
+    # =====================================================
+
+    recent_notifications = (
+        Notification.objects
+        .filter(
+            user=user,
+            organization=organization,
+        )
+        .select_related(
+            "property"
+        )
+        .order_by(
+            "-created_at"
+        )[:6]
+    )
+
+    activities = []
+
+    for notification in recent_notifications:
+
+        activities.append(
+            {
+                "id":
+                    notification.id,
+
+                "type":
+                    notification
+                    .notification_type,
+
+                "title":
+                    notification.title,
+
+                "description":
+                    notification.message,
+
+                "reference_id":
+                    notification.reference_id,
+
+                "property_name":
+                    (
+                        notification
+                        .property.name
+                        if notification.property
+                        else None
+                    ),
+
+                "is_read":
+                    notification.is_read,
+
+                "created_at":
+                    notification
+                    .created_at
+                    .isoformat(),
+            }
+        )
+
+    # =====================================================
+    # USER ROLES
+    # =====================================================
+
+    roles = []
+
+    for role in (
+        membership.roles
+        .filter(
+            is_active=True
+        )
+    ):
+
+        roles.append(
+            {
+                "id":
+                    role.id,
+
+                "code":
+                    role.code,
+
+                "name":
+                    role.get_name_display(),
+            }
+        )
+
+    # =====================================================
+    # PROFILE IMAGE
+    # =====================================================
+
+    profile_image = getattr(
+        user,
+        "profile_image",
+        None,
+    )
+
+    if profile_image:
         try:
-            provider_profile = request.user.service_provider_profile
-            rating = f"{provider_profile.rating}/5"
-        except ServiceProvider.DoesNotExist:
-            rating = "0.0/5"
+            profile_image = (
+                profile_image.url
+            )
+        except Exception:
+            profile_image = str(
+                profile_image
+            )
 
-        return Response({
-            "role": "PROVIDER",
-            "title": "Service Provider Console",
-            "stats": [
-                { "title": "Active Work Orders", "value": "0", "color": "bg-[#2E9D47]" },
-                { "title": "Completed Jobs", "value": "0", "color": "bg-[#0A4429]" },
-                { "title": "Pending Invoices", "value": "KES 0", "color": "bg-amber-600" },
-                { "title": "Profile Rating", "value": rating, "color": "bg-[#0A4429]" }
-            ],
-            "activities": ["Awaiting assignments from Property Management networks."],
-            "maintenance_health": { "pending": 0, "in_progress": 0, "resolved": 0 }
-        })
+    # =====================================================
+    # RESPONSE
+    # =====================================================
 
-    # -------------------------------------------------------------
-    # 3. GLOBAL SYSTEM ADMINISTRATOR DATA ARCHITECTURE
-    # -------------------------------------------------------------
-    elif role == 'admin':
-        total_users = User.objects.count()
-        total_pms = User.objects.filter(role='property manager').count()
-        total_units = Unit.objects.count()
+    return JsonResponse(
+        {
+            "user": {
+                "id":
+                    user.id,
 
-        return Response({
-            "role": "ADMIN",
-            "title": "System Administrator Control",
-            "stats": [
-                { "title": "Total System Users", "value": f"{total_users:,}", "color": "bg-[#0A4429]" },
-                { "title": "Active Pilot Managers", "value": str(total_pms), "color": "bg-[#2E9D47]" },
-                { "title": "Total Units Tracked", value: f"{total_units:,}", "color": "bg-[#0A4429]" },
-                { "title": "Platform GMV (MTD)", "value": "KES 0", "color": "bg-emerald-600" }
-            ],
-            "activities": ["System health verification checks passed safely."],
-            "maintenance_health": { "pending": 0, "in_progress": 0, "resolved": 0 }
-        })
+                "first_name":
+                    user.first_name,
 
-    # Fallback response context block for alternative system classifications
-    return Response({"detail": "Role dashboard layout engine currently unassigned."}, status=400)
+                "middle_name":
+                    getattr(
+                        user,
+                        "middle_name",
+                        "",
+                    ),
+
+                "last_name":
+                    user.last_name,
+
+                "email":
+                    user.email,
+
+                "profile_image":
+                    profile_image,
+            },
+
+            "organization": {
+                "id":
+                    organization.id,
+
+                "name":
+                    organization.name,
+
+                "organization_type":
+                    organization
+                    .organization_type,
+
+                "is_verified":
+                    organization
+                    .is_verified,
+
+                "roles":
+                    roles,
+            },
+
+            "statistics": {
+                "properties":
+                    property_count,
+
+                "units":
+                    total_units,
+
+                "occupied_units":
+                    occupied_units,
+
+                "vacant_units":
+                    vacant_units,
+
+                "tenants":
+                    tenants_count,
+
+                "rent_expected":
+                    float(
+                        rent_expected
+                    ),
+
+                "rent_collected":
+                    float(
+                        rent_collected
+                    ),
+
+                "arrears":
+                    float(
+                        arrears
+                    ),
+
+                "open_maintenance":
+                    open_maintenance,
+            },
+
+            "maintenance_summary": {
+                "urgent":
+                    urgent_maintenance,
+
+                "in_progress":
+                    in_progress_maintenance,
+
+                "completed":
+                    completed_maintenance,
+            },
+
+            "properties":
+                property_data,
+
+            "lease_expiries": {
+                "count":
+                    expiring_leases
+                    .count(),
+
+                "within_days":
+                    30,
+
+                "leases":
+                    leases_data,
+            },
+
+            "recent_activities":
+                activities,
+
+            "arrears_summary": {
+                "amount":
+                    float(
+                        arrears
+                    ),
+
+                "tenants_count":
+                    tenants_in_arrears,
+            },
+
+            "unread_notifications":
+                unread_notifications,
+        },
+        status=200,
+    )

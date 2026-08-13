@@ -1,1239 +1,651 @@
 from .common_imports import *
 
-from django.db import transaction
-from django.db.models import Q
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_manager_maintenance_tickets(request):
+    user = request.user
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
-MAINTENANCE_MANAGEMENT_ROLES = {
-    "admin",
-    "property_manager",
-    "maintenance_officer",
-}
-
-MAINTENANCE_ASSIGNMENT_ROLES = {
-    "admin",
-    "property_manager",
-    "maintenance_officer",
-}
-
-VALID_MAINTENANCE_STATUSES = {
-    "pending",
-    "assigned",
-    "in_progress",
-    "completed",
-    "cancelled",
-}
-
-
-# ============================================================
-# HELPERS
-# ============================================================
-
-def get_company_membership(user, company_id):
-    """
-    Return the authenticated user's active company membership.
-    """
-
-    return (
-        CompanyStaff.objects
-        .select_related(
-            "company",
-            "user",
-        )
-        .filter(
-            user=user,
-            company_id=company_id,
-            is_active=True,
-        )
-        .first()
+    organization_id = request.GET.get(
+        "organization_id"
     )
 
+    # =====================================================
+    # ORGANIZATION REQUIRED
+    # =====================================================
 
-def can_manage_maintenance(membership):
-    return (
-        membership is not None
-        and membership.role in MAINTENANCE_MANAGEMENT_ROLES
-    )
-
-
-def can_assign_professional(membership):
-    return (
-        membership is not None
-        and membership.role in MAINTENANCE_ASSIGNMENT_ROLES
-    )
-
-
-def get_maintenance_request_for_company(
-    request_id,
-    company_id,
-):
-    """
-    Fetch a maintenance request belonging to a specific company.
-    """
-
-    return (
-        MaintenanceRequest.objects
-        .select_related(
-            "company",
-            "tenant__user",
-            "property",
-            "unit",
-            "assigned_professional__user",
-        )
-        .filter(
-            id=request_id,
-            property__company_id=company_id,
-        )
-        .first()
-    )
-
-
-def serialize_maintenance_request(
-    maintenance,
-    current_user=None,
-):
-    tenant_user = (
-        maintenance.tenant.user
-        if maintenance.tenant
-        and maintenance.tenant.user
-        else None
-    )
-
-    professional_user = (
-        maintenance.assigned_professional.user
-        if maintenance.assigned_professional
-        and maintenance.assigned_professional.user
-        else None
-    )
-
-    return {
-        "id": maintenance.id,
-        "title": maintenance.title,
-        "description": maintenance.description,
-        "category": maintenance.category,
-        "priority": maintenance.priority,
-        "priority_label": (
-            maintenance.priority.replace("_", " ").title()
-            if maintenance.priority
-            else None
-        ),
-        "status": maintenance.status,
-        "status_label": (
-            maintenance.status.replace("_", " ").title()
-            if maintenance.status
-            else None
-        ),
-        "company": {
-            "id": maintenance.property.company_id,
-            "name": maintenance.property.company.name,
-        },
-        "property": {
-            "id": maintenance.property_id,
-            "name": maintenance.property.name,
-        },
-        "unit": (
+    if not organization_id:
+        return JsonResponse(
             {
-                "id": maintenance.unit_id,
-                "unit_number": maintenance.unit.unit_number,
-            }
-            if maintenance.unit
-            else None
-        ),
-        "tenant": (
+                "message":
+                    "organization_id is required."
+            },
+            status=400,
+        )
+
+    # =====================================================
+    # GET ORGANIZATION
+    # =====================================================
+
+    try:
+        organization = (
+            Organization.objects.get(
+                id=organization_id
+            )
+        )
+
+    except Organization.DoesNotExist:
+        return JsonResponse(
             {
-                "id": maintenance.tenant_id,
-                "user_id": tenant_user.id,
-                "full_name": tenant_user.full_name,
-                "email": tenant_user.email,
-                "phone_number": tenant_user.phone_number,
-                "profile_image": tenant_user.profile_image,
-            }
-            if tenant_user
-            else None
-        ),
-        "assigned_professional": (
+                "message":
+                    "Organization not found."
+            },
+            status=404,
+        )
+
+    # =====================================================
+    # VERIFY MEMBERSHIP
+    # =====================================================
+
+    try:
+        membership = (
+            OrganizationMembership.objects
+            .prefetch_related("roles")
+            .get(
+                organization=organization,
+                user=user,
+                is_active=True,
+            )
+        )
+
+    except OrganizationMembership.DoesNotExist:
+        return JsonResponse(
             {
-                "id": maintenance.assigned_professional_id,
-                "user_id": professional_user.id,
-                "full_name": professional_user.full_name,
-                "phone_number": professional_user.phone_number,
-                "profile_image": professional_user.profile_image,
-                "professional_title": (
-                    maintenance
-                    .assigned_professional
-                    .professional_title
-                ),
-                "years_of_experience": (
-                    maintenance
-                    .assigned_professional
-                    .years_of_experience
-                ),
-            }
-            if professional_user
-            else None
-        ),
-        "image": getattr(
-            maintenance,
-            "image",
-            None,
-        ),
-        "created_at": maintenance.created_at.isoformat(),
-        "updated_at": (
-            maintenance.updated_at.isoformat()
-            if getattr(maintenance, "updated_at", None)
-            else None
-        ),
-        "is_reported_by_me": (
-            tenant_user.id == current_user.id
-            if tenant_user and current_user
-            else False
-        ),
+                "message":
+                    "You do not have access to this organization."
+            },
+            status=403,
+        )
+
+    # =====================================================
+    # VERIFY ROLE
+    # =====================================================
+
+    allowed_roles = {
+        "organization_owner",
+        "organization_admin",
+        "property_manager",
+        "caretaker",
     }
 
-
-def safe_send_push_notification(
-    user,
-    title,
-    body,
-    data=None,
-):
-    expo_token = getattr(
-        user,
-        "expo_token",
-        None,
+    role_codes = set(
+        membership.roles
+        .filter(is_active=True)
+        .values_list(
+            "code",
+            flat=True,
+        )
     )
 
-    if not expo_token:
-        return False
-
-    try:
-        send_push_notification(
-            expo_token,
-            title=title,
-            body=body,
-            data=data or {},
-        )
-
-        return True
-
-    except Exception as error:
-        print(
-            "MAINTENANCE PUSH ERROR:",
-            str(error),
-        )
-
-        return False
-
-
-# ============================================================
-# GET COMPANY MAINTENANCE REQUESTS
-# ============================================================
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def property_manager_maintenance_requests(request):
-    try:
-        company_id = request.GET.get("company_id")
-        status_filter = str(
-            request.GET.get("status", "")
-        ).strip().lower()
-
-        priority_filter = str(
-            request.GET.get("priority", "")
-        ).strip().lower()
-
-        property_id = request.GET.get("property_id")
-        professional_id = request.GET.get(
-            "professional_id"
-        )
-
-        search_query = str(
-            request.GET.get("search", "")
-        ).strip()
-
-        if not company_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Company is required.",
-                },
-                status=400,
-            )
-
-        membership = get_company_membership(
-            request.user,
-            company_id,
-        )
-
-        if not can_manage_maintenance(membership):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "You do not have permission to view "
-                        "this company's maintenance requests."
-                    ),
-                },
-                status=403,
-            )
-
-        maintenance_requests = (
-            MaintenanceRequest.objects
-            .filter(
-                property__company_id=company_id,
-            )
-            .select_related(
-                "property__company",
-                "tenant__user",
-                "unit",
-                "assigned_professional__user",
-            )
-            .order_by("-created_at")
-        )
-
-        if status_filter:
-            if status_filter not in VALID_MAINTENANCE_STATUSES:
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "Invalid status filter.",
-                        "allowed_statuses": sorted(
-                            VALID_MAINTENANCE_STATUSES
-                        ),
-                    },
-                    status=400,
-                )
-
-            maintenance_requests = (
-                maintenance_requests.filter(
-                    status=status_filter
-                )
-            )
-
-        if priority_filter:
-            maintenance_requests = (
-                maintenance_requests.filter(
-                    priority=priority_filter
-                )
-            )
-
-        if property_id:
-            maintenance_requests = (
-                maintenance_requests.filter(
-                    property_id=property_id
-                )
-            )
-
-        if professional_id:
-            maintenance_requests = (
-                maintenance_requests.filter(
-                    assigned_professional_id=
-                    professional_id
-                )
-            )
-
-        if search_query:
-            maintenance_requests = (
-                maintenance_requests.filter(
-                    Q(
-                        title__icontains=
-                        search_query
-                    )
-                    | Q(
-                        description__icontains=
-                        search_query
-                    )
-                    | Q(
-                        property__name__icontains=
-                        search_query
-                    )
-                    | Q(
-                        unit__unit_number__icontains=
-                        search_query
-                    )
-                    | Q(
-                        tenant__user__full_name__icontains=
-                        search_query
-                    )
-                )
-            )
-
-        data = [
-            serialize_maintenance_request(
-                maintenance,
-                request.user,
-            )
-            for maintenance in maintenance_requests
-        ]
-
-        summary = {
-            "total": maintenance_requests.count(),
-            "pending": maintenance_requests.filter(
-                status="pending"
-            ).count(),
-            "assigned": maintenance_requests.filter(
-                status="assigned"
-            ).count(),
-            "in_progress": maintenance_requests.filter(
-                status="in_progress"
-            ).count(),
-            "completed": maintenance_requests.filter(
-                status="completed"
-            ).count(),
-            "cancelled": maintenance_requests.filter(
-                status="cancelled"
-            ).count(),
-        }
-
+    if not role_codes.intersection(
+        allowed_roles
+    ):
         return JsonResponse(
             {
-                "success": True,
-                "count": len(data),
-                "summary": summary,
-                "requests": data,
+                "message":
+                    "You do not have permission to view maintenance requests."
             },
-            status=200,
+            status=403,
         )
 
-    except Exception as error:
-        print(
-            "GET MAINTENANCE REQUESTS ERROR:",
-            str(error),
+    # =====================================================
+    # QUERY PARAMETERS
+    # =====================================================
+
+    search = str(
+        request.GET.get(
+            "search",
+            ""
         )
+    ).strip()
 
-        return JsonResponse(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while retrieving "
-                    "maintenance requests."
-                ),
-                "error": str(error),
-            },
-            status=500,
+    status_filter = str(
+        request.GET.get(
+            "status",
+            ""
         )
+    ).strip()
 
+    priority_filter = str(
+        request.GET.get(
+            "priority",
+            ""
+        )
+    ).strip()
 
-# ============================================================
-# ALIAS FOR EXISTING FRONTEND ENDPOINT
-# ============================================================
+    category_filter = str(
+        request.GET.get(
+            "category",
+            ""
+        )
+    ).strip()
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_maintenance_requests(request):
-    """
-    Maintains compatibility with the existing frontend while
-    using the same multi-tenant maintenance logic.
-    """
-
-    return property_manager_maintenance_requests(
-        request
+    property_id = request.GET.get(
+        "property_id"
     )
 
+    assigned_to = request.GET.get(
+        "assigned_to"
+    )
 
-# ============================================================
-# GET SINGLE MAINTENANCE REQUEST
-# ============================================================
+    # =====================================================
+    # BASE QUERY
+    # =====================================================
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_maintenance_request(
-    request,
-    request_id,
-):
-    try:
-        company_id = request.GET.get("company_id")
+    tickets = (
+        MaintenanceTicket.objects
+        .filter(
+            organization=organization
+        )
+        .select_related(
+            "property",
+            "building",
+            "unit",
+            "lease",
+            "reported_by",
+            "assigned_to",
+        )
+        .prefetch_related(
+            "media"
+        )
+        .order_by(
+            "-created_at"
+        )
+    )
 
-        if not company_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Company is required.",
-                },
-                status=400,
-            )
+    # =====================================================
+    # FILTER BY STATUS
+    # =====================================================
 
-        membership = get_company_membership(
-            request.user,
-            company_id,
+    if status_filter:
+        tickets = tickets.filter(
+            status=status_filter
         )
 
-        if not can_manage_maintenance(membership):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "You do not have permission to view "
-                        "this maintenance request."
-                    ),
-                },
-                status=403,
-            )
+    # =====================================================
+    # FILTER BY PRIORITY
+    # =====================================================
 
-        maintenance = (
-            get_maintenance_request_for_company(
-                request_id,
-                company_id,
-            )
+    if priority_filter:
+        tickets = tickets.filter(
+            priority=priority_filter
         )
 
-        if not maintenance:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Maintenance request not found."
-                    ),
-                },
-                status=404,
-            )
+    # =====================================================
+    # FILTER BY CATEGORY
+    # =====================================================
 
-        return JsonResponse(
-            {
-                "success": True,
-                "request": (
-                    serialize_maintenance_request(
-                        maintenance,
-                        request.user,
-                    )
-                ),
-            },
-            status=200,
+    if category_filter:
+        tickets = tickets.filter(
+            category=category_filter
         )
 
-    except Exception as error:
-        return JsonResponse(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while retrieving "
-                    "the maintenance request."
-                ),
-                "error": str(error),
-            },
-            status=500,
+    # =====================================================
+    # FILTER BY PROPERTY
+    # =====================================================
+
+    if property_id:
+        tickets = tickets.filter(
+            property_id=property_id
         )
 
+    # =====================================================
+    # FILTER BY ASSIGNEE
+    # =====================================================
 
-# ============================================================
-# UPDATE MAINTENANCE STATUS
-# ============================================================
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticated])
-def update_maintenance_status(
-    request,
-    request_id,
-):
-    try:
-        company_id = request.data.get("company_id")
-
-        new_status = str(
-            request.data.get("status", "")
-        ).strip().lower()
-
-        if not company_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Company is required.",
-                },
-                status=400,
-            )
-
-        if not new_status:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Status is required.",
-                },
-                status=400,
-            )
-
-        if new_status not in VALID_MAINTENANCE_STATUSES:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Invalid status.",
-                    "allowed_statuses": sorted(
-                        VALID_MAINTENANCE_STATUSES
-                    ),
-                },
-                status=400,
-            )
-
-        membership = get_company_membership(
-            request.user,
-            company_id,
+    if assigned_to:
+        tickets = tickets.filter(
+            assigned_to_id=assigned_to
         )
 
-        if not can_manage_maintenance(membership):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "You do not have permission to update "
-                        "maintenance requests."
-                    ),
-                },
-                status=403,
-            )
+    # =====================================================
+    # SEARCH
+    # =====================================================
 
-        maintenance = (
-            get_maintenance_request_for_company(
-                request_id,
-                company_id,
+    if search:
+        tickets = tickets.filter(
+            Q(
+                ticket_number__icontains=search
+            )
+            |
+            Q(
+                title__icontains=search
+            )
+            |
+            Q(
+                description__icontains=search
+            )
+            |
+            Q(
+                property__name__icontains=search
+            )
+            |
+            Q(
+                unit__name__icontains=search
+            )
+            |
+            Q(
+                unit__unit_code__icontains=search
+            )
+            |
+            Q(
+                category__icontains=search
+            )
+            |
+            Q(
+                reported_by__first_name__icontains=search
+            )
+            |
+            Q(
+                reported_by__last_name__icontains=search
             )
         )
 
-        if not maintenance:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Maintenance request not found."
-                    ),
-                },
-                status=404,
-            )
+    # =====================================================
+    # SUMMARY
+    # =====================================================
 
-        old_status = maintenance.status
-
-        if old_status == new_status:
-            return JsonResponse(
-                {
-                    "success": True,
-                    "message": (
-                        "Maintenance request already has "
-                        "this status."
-                    ),
-                    "request": (
-                        serialize_maintenance_request(
-                            maintenance,
-                            request.user,
-                        )
-                    ),
-                },
-                status=200,
-            )
-
-        # Optional workflow protection.
-        if (
-            new_status == "in_progress"
-            and not maintenance.assigned_professional
-        ):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Assign a professional before moving "
-                        "the request to in progress."
-                    ),
-                },
-                status=400,
-            )
-
-        maintenance.status = new_status
-
-        update_fields = ["status"]
-
-        if (
-            new_status == "completed"
-            and hasattr(maintenance, "completed_at")
-        ):
-            maintenance.completed_at = timezone.now()
-            update_fields.append("completed_at")
-
-        if (
-            old_status == "completed"
-            and new_status != "completed"
-            and hasattr(maintenance, "completed_at")
-        ):
-            maintenance.completed_at = None
-            update_fields.append("completed_at")
-
-        maintenance.save(
-            update_fields=update_fields
+    all_organization_tickets = (
+        MaintenanceTicket.objects
+        .filter(
+            organization=organization
         )
+    )
 
-        tenant_user = (
-            maintenance.tenant.user
-            if maintenance.tenant
-            and maintenance.tenant.user
-            else None
+    total_count = (
+        all_organization_tickets.count()
+    )
+
+    open_count = (
+        all_organization_tickets
+        .filter(
+            status="open"
         )
+        .count()
+    )
 
-        notification_sent = False
+    active_count = (
+        all_organization_tickets
+        .filter(
+            status__in=[
+                "under_review",
+                "approved",
+                "published_to_kaskazi",
+                "assigned",
+                "in_progress",
+                "awaiting_approval",
+            ]
+        )
+        .count()
+    )
 
-        if tenant_user:
-            notification_sent = (
-                safe_send_push_notification(
-                    tenant_user,
-                    title="Maintenance update",
-                    body=(
-                        f'Your maintenance request '
-                        f'"{maintenance.title}" is now '
-                        f'{new_status.replace("_", " ")}.'
-                    ),
-                    data={
-                        "screen": "MaintenanceDetails",
-                        "maintenance_request_id": str(
-                            maintenance.id
+    completed_count = (
+        all_organization_tickets
+        .filter(
+            status="completed"
+        )
+        .count()
+    )
+
+    urgent_count = (
+        all_organization_tickets
+        .filter(
+            priority__in=[
+                "urgent",
+                "emergency",
+            ]
+        )
+        .exclude(
+            status__in=[
+                "completed",
+                "closed",
+                "cancelled",
+            ]
+        )
+        .count()
+    )
+
+    # =====================================================
+    # SERIALIZE TICKETS
+    # =====================================================
+
+    ticket_data = []
+
+    for ticket in tickets:
+
+        # -------------------------------------------------
+        # Reporter name
+        # -------------------------------------------------
+
+        reported_by_name = "Unknown"
+
+        if ticket.reported_by:
+            reported_by_name = " ".join(
+                filter(
+                    None,
+                    [
+                        ticket.reported_by.first_name,
+                        getattr(
+                            ticket.reported_by,
+                            "middle_name",
+                            "",
                         ),
-                        "company_id": str(
-                            company_id
-                        ),
-                    },
+                        ticket.reported_by.last_name,
+                    ],
                 )
             )
 
-        return JsonResponse(
-            {
-                "success": True,
-                "message": (
-                    "Maintenance status updated successfully."
-                ),
-                "old_status": old_status,
-                "new_status": new_status,
-                "notification_sent": notification_sent,
-                "request": (
-                    serialize_maintenance_request(
-                        maintenance,
-                        request.user,
-                    )
-                ),
-            },
-            status=200,
-        )
+            if not reported_by_name:
+                reported_by_name = (
+                    ticket.reported_by.email
+                )
 
-    except Exception as error:
-        print(
-            "UPDATE MAINTENANCE STATUS ERROR:",
-            str(error),
-        )
+        # -------------------------------------------------
+        # Assigned user
+        # -------------------------------------------------
 
-        return JsonResponse(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while updating "
-                    "the maintenance status."
-                ),
-                "error": str(error),
-            },
-            status=500,
-        )
+        assigned_to_name = None
 
-
-# ============================================================
-# ASSIGN PROFESSIONAL
-# ============================================================
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticated])
-def assign_professional(
-    request,
-    request_id,
-):
-    try:
-        company_id = request.data.get("company_id")
-        professional_id = request.data.get(
-            "professional_id"
-        )
-
-        if not company_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Company is required.",
-                },
-                status=400,
+        if ticket.assigned_to:
+            assigned_to_name = " ".join(
+                filter(
+                    None,
+                    [
+                        ticket.assigned_to.first_name,
+                        getattr(
+                            ticket.assigned_to,
+                            "middle_name",
+                            "",
+                        ),
+                        ticket.assigned_to.last_name,
+                    ],
+                )
             )
 
-        if not professional_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Professional is required."
-                    ),
-                },
-                status=400,
+            if not assigned_to_name:
+                assigned_to_name = (
+                    ticket.assigned_to.email
+                )
+
+        # -------------------------------------------------
+        # Unit
+        #
+        # Your Unit model uses name + unit_code,
+        # not unit_number.
+        # We map name to unit_number so your current
+        # React Native screen can continue using
+        # item.unit_number.
+        # -------------------------------------------------
+
+        unit_number = "Common Area"
+        unit_code = None
+
+        if ticket.unit:
+            unit_number = (
+                ticket.unit.name
+                or ticket.unit.unit_code
             )
 
-        membership = get_company_membership(
-            request.user,
-            company_id,
-        )
-
-        if not can_assign_professional(membership):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "You do not have permission to assign "
-                        "maintenance professionals."
-                    ),
-                },
-                status=403,
+            unit_code = (
+                ticket.unit.unit_code
             )
 
-        maintenance = (
-            get_maintenance_request_for_company(
-                request_id,
-                company_id,
-            )
-        )
+        # -------------------------------------------------
+        # Building
+        # -------------------------------------------------
 
-        if not maintenance:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Maintenance request not found."
-                    ),
-                },
-                status=404,
+        building_name = None
+
+        if ticket.building:
+            building_name = (
+                ticket.building.name
             )
 
-        professional = (
-            Professional.objects
-            .select_related(
-                "user",
-                "company",
-            )
+        # -------------------------------------------------
+        # First reported image
+        # -------------------------------------------------
+
+        first_image = (
+            ticket.media
             .filter(
-                id=professional_id,
-                company_id=company_id,
+                file_type="image"
             )
+            .order_by("created_at")
             .first()
         )
 
-        if not professional:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Professional not found in this company."
-                    ),
-                },
-                status=404,
-            )
+        # -------------------------------------------------
+        # Build response
+        # -------------------------------------------------
 
-        if not professional.user.is_active:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "The selected professional's account "
-                        "is inactive."
-                    ),
-                },
-                status=400,
-            )
-
-        with transaction.atomic():
-            maintenance.assigned_professional = (
-                professional
-            )
-
-            if maintenance.status in {
-                "pending",
-                "cancelled",
-            }:
-                maintenance.status = "assigned"
-
-            maintenance.save(
-                update_fields=[
-                    "assigned_professional",
-                    "status",
-                ]
-            )
-
-        professional_notification_sent = (
-            safe_send_push_notification(
-                professional.user,
-                title="New maintenance assignment",
-                body=(
-                    f'You have been assigned to '
-                    f'"{maintenance.title}" at '
-                    f'{maintenance.property.name}.'
-                ),
-                data={
-                    "screen": "ProfessionalMaintenanceDetails",
-                    "maintenance_request_id": str(
-                        maintenance.id
-                    ),
-                    "company_id": str(
-                        company_id
-                    ),
-                },
-            )
-        )
-
-        tenant_notification_sent = False
-
-        if (
-            maintenance.tenant
-            and maintenance.tenant.user
-        ):
-            tenant_notification_sent = (
-                safe_send_push_notification(
-                    maintenance.tenant.user,
-                    title="Professional assigned",
-                    body=(
-                        f'{professional.user.full_name} has '
-                        f'been assigned to your maintenance '
-                        f'request "{maintenance.title}".'
-                    ),
-                    data={
-                        "screen": "MaintenanceDetails",
-                        "maintenance_request_id": str(
-                            maintenance.id
-                        ),
-                        "company_id": str(
-                            company_id
-                        ),
-                    },
-                )
-            )
-
-        return JsonResponse(
+        ticket_data.append(
             {
-                "success": True,
-                "message": (
-                    "Professional assigned successfully."
+                "id":
+                    ticket.id,
+
+                "ticket_number":
+                    ticket.ticket_number,
+
+                "title":
+                    ticket.title,
+
+                "description":
+                    ticket.description,
+
+                "category":
+                    ticket.category,
+
+                "category_display":
+                    ticket.get_category_display(),
+
+                "priority":
+                    ticket.priority,
+
+                "priority_display":
+                    ticket.get_priority_display(),
+
+                "source":
+                    ticket.source,
+
+                "source_display":
+                    ticket.get_source_display(),
+
+                "status":
+                    ticket.status,
+
+                "status_display":
+                    ticket.get_status_display(),
+
+                # -----------------------------
+                # Property
+                # -----------------------------
+
+                "property_id":
+                    ticket.property_id,
+
+                "property_name":
+                    ticket.property.name,
+
+                # -----------------------------
+                # Building
+                # -----------------------------
+
+                "building_id": (
+                    ticket.building_id
+                    if ticket.building
+                    else None
                 ),
-                "professional_notification_sent": (
-                    professional_notification_sent
+
+                "building_name":
+                    building_name,
+
+                # -----------------------------
+                # Unit
+                # -----------------------------
+
+                "unit_id": (
+                    ticket.unit_id
+                    if ticket.unit
+                    else None
                 ),
-                "tenant_notification_sent": (
-                    tenant_notification_sent
+
+                "unit_number":
+                    unit_number,
+
+                "unit_code":
+                    unit_code,
+
+                # -----------------------------
+                # Lease
+                # -----------------------------
+
+                "lease_id": (
+                    ticket.lease_id
+                    if ticket.lease
+                    else None
                 ),
-                "request": (
-                    serialize_maintenance_request(
-                        maintenance,
-                        request.user,
+
+                "lease_number": (
+                    ticket.lease.lease_number
+                    if ticket.lease
+                    else None
+                ),
+
+                # -----------------------------
+                # Reporter
+                # -----------------------------
+
+                "reported_by_id":
+                    ticket.reported_by_id,
+
+                "reported_by":
+                    reported_by_name,
+
+                # -----------------------------
+                # Assignment
+                # -----------------------------
+
+                "assigned_to_id": (
+                    ticket.assigned_to_id
+                    if ticket.assigned_to
+                    else None
+                ),
+
+                "assigned_to":
+                    assigned_to_name,
+
+                # -----------------------------
+                # Scheduling
+                # -----------------------------
+
+                "preferred_date": (
+                    ticket.preferred_date.isoformat()
+                    if ticket.preferred_date
+                    else None
+                ),
+
+                "scheduled_at": (
+                    ticket.scheduled_at.isoformat()
+                    if ticket.scheduled_at
+                    else None
+                ),
+
+                "completed_at": (
+                    ticket.completed_at.isoformat()
+                    if ticket.completed_at
+                    else None
+                ),
+
+                # -----------------------------
+                # Financial
+                # -----------------------------
+
+                "estimated_cost": (
+                    float(
+                        ticket.estimated_cost
                     )
+                    if ticket.estimated_cost
+                    is not None
+                    else None
                 ),
-            },
-            status=200,
-        )
 
-    except Exception as error:
-        print(
-            "ASSIGN PROFESSIONAL ERROR:",
-            str(error),
-        )
-
-        return JsonResponse(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while assigning "
-                    "the professional."
-                ),
-                "error": str(error),
-            },
-            status=500,
-        )
-
-
-# ============================================================
-# REMOVE ASSIGNED PROFESSIONAL
-# ============================================================
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticated])
-def unassign_professional(
-    request,
-    request_id,
-):
-    try:
-        company_id = request.data.get("company_id")
-
-        if not company_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Company is required.",
-                },
-                status=400,
-            )
-
-        membership = get_company_membership(
-            request.user,
-            company_id,
-        )
-
-        if not can_assign_professional(membership):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "You do not have permission to "
-                        "remove assigned professionals."
-                    ),
-                },
-                status=403,
-            )
-
-        maintenance = (
-            get_maintenance_request_for_company(
-                request_id,
-                company_id,
-            )
-        )
-
-        if not maintenance:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "Maintenance request not found."
-                    ),
-                },
-                status=404,
-            )
-
-        if not maintenance.assigned_professional:
-            return JsonResponse(
-                {
-                    "success": True,
-                    "message": (
-                        "No professional is assigned to "
-                        "this request."
-                    ),
-                },
-                status=200,
-            )
-
-        previous_professional = (
-            maintenance.assigned_professional
-        )
-
-        maintenance.assigned_professional = None
-
-        if maintenance.status in {
-            "assigned",
-            "in_progress",
-        }:
-            maintenance.status = "pending"
-
-        maintenance.save(
-            update_fields=[
-                "assigned_professional",
-                "status",
-            ]
-        )
-
-        safe_send_push_notification(
-            previous_professional.user,
-            title="Maintenance assignment removed",
-            body=(
-                f'You are no longer assigned to '
-                f'"{maintenance.title}".'
-            ),
-            data={
-                "screen": "ProfessionalMaintenance",
-                "maintenance_request_id": str(
-                    maintenance.id
-                ),
-                "company_id": str(company_id),
-            },
-        )
-
-        return JsonResponse(
-            {
-                "success": True,
-                "message": (
-                    "Professional removed successfully."
-                ),
-                "request": (
-                    serialize_maintenance_request(
-                        maintenance,
-                        request.user,
+                "actual_cost": (
+                    float(
+                        ticket.actual_cost
                     )
+                    if ticket.actual_cost
+                    is not None
+                    else None
                 ),
+
+                # -----------------------------
+                # Image
+                # -----------------------------
+
+                "image": (
+                    first_image.file_url
+                    if first_image
+                    else None
+                ),
+
+                # -----------------------------
+                # Dates
+                # -----------------------------
+
+                "created_at":
+                    ticket.created_at.isoformat(),
+
+                "updated_at":
+                    ticket.updated_at.isoformat(),
+            }
+        )
+
+    # =====================================================
+    # RESPONSE
+    # =====================================================
+
+    return JsonResponse(
+        {
+            "organization": {
+                "id":
+                    organization.id,
+
+                "name":
+                    organization.name,
             },
-            status=200,
-        )
 
-    except Exception as error:
-        return JsonResponse(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while removing "
-                    "the professional."
-                ),
-                "error": str(error),
+            "summary": {
+                "total":
+                    total_count,
+
+                "open":
+                    open_count,
+
+                "active":
+                    active_count,
+
+                "completed":
+                    completed_count,
+
+                "urgent":
+                    urgent_count,
             },
-            status=500,
-        )
 
+            "tickets":
+                ticket_data,
 
-# ============================================================
-# GET COMPANY PROFESSIONALS
-# ============================================================
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_company_professionals(request):
-    try:
-        company_id = request.GET.get("company_id")
-
-        search_query = str(
-            request.GET.get("search", "")
-        ).strip()
-
-        professional_title = str(
-            request.GET.get("title", "")
-        ).strip()
-
-        if not company_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": "Company is required.",
-                },
-                status=400,
-            )
-
-        membership = get_company_membership(
-            request.user,
-            company_id,
-        )
-
-        if not can_manage_maintenance(membership):
-            return JsonResponse(
-                {
-                    "success": False,
-                    "message": (
-                        "You do not have permission to view "
-                        "this company's professionals."
-                    ),
-                },
-                status=403,
-            )
-
-        professionals = (
-            Professional.objects
-            .filter(
-                company_id=company_id,
-                user__is_active=True,
-            )
-            .select_related(
-                "user",
-                "company",
-            )
-            .order_by("user__full_name")
-        )
-
-        if search_query:
-            professionals = professionals.filter(
-                Q(
-                    user__full_name__icontains=
-                    search_query
-                )
-                | Q(
-                    user__email__icontains=
-                    search_query
-                )
-                | Q(
-                    user__phone_number__icontains=
-                    search_query
-                )
-                | Q(
-                    professional_title__icontains=
-                    search_query
-                )
-            )
-
-        if professional_title:
-            professionals = professionals.filter(
-                professional_title__icontains=
-                professional_title
-            )
-
-        data = []
-
-        for professional in professionals:
-            active_assignments = (
-                MaintenanceRequest.objects
-                .filter(
-                    assigned_professional=professional,
-                    property__company_id=company_id,
-                    status__in=[
-                        "assigned",
-                        "in_progress",
-                    ],
-                )
-                .count()
-            )
-
-            completed_assignments = (
-                MaintenanceRequest.objects
-                .filter(
-                    assigned_professional=professional,
-                    property__company_id=company_id,
-                    status="completed",
-                )
-                .count()
-            )
-
-            data.append({
-                "id": professional.id,
-                "user_id": professional.user_id,
-                "name": professional.user.full_name,
-                "email": professional.user.email,
-                "phone": (
-                    professional.user.phone_number
-                ),
-                "profile_image": (
-                    professional.user.profile_image
-                ),
-                "title": (
-                    professional.professional_title
-                ),
-                "experience": (
-                    professional.years_of_experience
-                ),
-                "active_assignments": (
-                    active_assignments
-                ),
-                "completed_assignments": (
-                    completed_assignments
-                ),
-            })
-
-        return JsonResponse(
-            {
-                "success": True,
-                "count": len(data),
-                "professionals": data,
-            },
-            status=200,
-        )
-
-    except Exception as error:
-        print(
-            "GET COMPANY PROFESSIONALS ERROR:",
-            str(error),
-        )
-
-        return JsonResponse(
-            {
-                "success": False,
-                "message": (
-                    "An error occurred while retrieving "
-                    "company professionals."
-                ),
-                "error": str(error),
-            },
-            status=500,
-        )
+            "count":
+                len(ticket_data),
+        },
+        status=200,
+    )
