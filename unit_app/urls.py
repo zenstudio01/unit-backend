@@ -6,6 +6,12 @@ from .api_views.organization import *
 from .api_views.dashboard import *
 from .api_views.properties import *
 from .api_views.finance import *
+from .api_views.owner_dashboard import *
+from .api_views.portfolios import *
+from .api_views.reports import *
+from .api_views.statements import *
+from .api_views.owner_profile import *
+from .api_views.owner_notifications import *
 
 
 
@@ -66,12 +72,37 @@ urlpatterns = [
     path("properties/", get_properties, name="get_properties"),
     path("properties/form_options/", property_form_options, name="property_form_options"),
     path("properties/create/", create_property, name="create_property"),
+    path("properties/<int:property_id>/", get_property_details, name="get_property_details"),
+    path("properties/owner/", get_owner_properties, name="get_owner_properties"),
 
     # maintenance
     path("maintenance/", get_manager_maintenance_tickets, name="get_manager_maintenance_tickets"),
 
     # finance
     path("finance/manager/", manager_finance_dashboard, name="manager_finance_dashboard"),
+
+    # owner dashboard
+    path("dashboard/owner/", owner_dashboard, name="owner_dashboard"),
+
+    # owner portifolios
+    path("portfolios/", get_owner_portfolios, name="get_owner_portfolios"),
+    path("portfolios/create/", create_portfolio, name="create_portfolio"),
+    path("portfolios/<int:portfolio_id>/", get_portfolio_details, name="get_portfolio_details"),
+
+    # reports
+    path("reports/owner/", owner_reports, name="owner_reports"),
+
+    # owner statements
+    path("statements/owner/", owner_statements, name="owner_statements"),
+
+    # owner profile
+    path("profile/owner/", get_owner_profile, name="get_owner_profile"),
+    path("profile/owner/update/", update_owner_profile, name="update_owner_profile"),
+
+    # owner notifications
+    path("notifications/", get_notifications, name="get_notifications"),
+    path("notifications/<int:notification_id>/read/", mark_notification_read, name="mark_notification_read"),
+    path("notifications/read-all/", mark_all_notifications_read, name="mark_all_notifications_read"),
 
 
 
