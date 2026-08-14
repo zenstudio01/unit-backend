@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Join {{ organization.name }} | UNIT
+    </title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .header {
+            background: #0B6B36;
+            min-height: 300px;
+            padding: 50px 20px 120px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 38px;
+            font-weight: 800;
+        }
+
+        .header p {
+            opacity: .8;
+            margin-top: 12px;
+            font-size: 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 620px;
+            margin: -90px auto 70px;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 30px;
+            padding: 35px;
+            box-shadow:
+                0 12px 35px
+                rgba(0,0,0,.08);
+        }
+
+        .logo {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+            background: #eaf5ef;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 8px;
+        }
+
+        .muted {
+            color: #64748b;
+        }
+
+        .organization {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 18px;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .value {
+            font-weight: 700;
+        }
+
+        .roles {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .role {
+            background: #eaf5ef;
+            color: #0B6B36;
+            border-radius: 30px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .section {
+            margin-top: 30px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            height: 52px;
+            border:
+                1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 0 15px;
+            font-size: 15px;
+            outline: none;
+            margin-bottom: 18px;
+            background: #f8fafc;
+        }
+
+        input:focus {
+            border-color: #0B6B36;
+        }
+
+        button {
+            width: 100%;
+            height: 54px;
+            border: 0;
+            border-radius: 14px;
+            background: #0B6B36;
+            color: white;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: .92;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            border:
+                1px solid #fecaca;
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            margin-top: 25px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Welcome to UNIT</h1>
+
+    <p>
+        You've been invited to join
+        {{ organization.name }}
+    </p>
+</div>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="center">
+
+            <div class="logo">
+                🏢
+            </div>
+
+            <h2>
+                Activate Your Account
+            </h2>
+
+            <p class="muted">
+                Review your invitation and
+                create a password to continue.
+            </p>
+
+        </div>
+
+        <div class="organization">
+
+            <div class="label">
+                Organization
+            </div>
+
+            <div class="value">
+                {{ organization.name }}
+            </div>
+
+            <br>
+
+            <div class="label">
+                Email
+            </div>
+
+            <div class="value">
+                {{ invitation.email }}
+            </div>
+
+            <br>
+
+            <div class="label">
+                Assigned Roles
+            </div>
+
+            <div class="roles">
+
+                {% for role in roles %}
+
+                    <span class="role">
+                        {{ role.get_name_display }}
+                    </span>
+
+                {% endfor %}
+
+            </div>
+
+            {% if invitation.invited_by %}
+
+                <br>
+
+                <div class="label">
+                    Invited By
+                </div>
+
+                <div class="value">
+
+                    {{ invitation.invited_by.first_name }}
+                    {{ invitation.invited_by.last_name }}
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+        <div class="section">
+
+            {% if error %}
+
+                <div class="error">
+                    {{ error }}
+                </div>
+
+            {% endif %}
+
+            <form method="POST">
+
+                {% csrf_token %}
+
+                <input
+                    type="hidden"
+                    name="token"
+                    value="{{ token }}"
+                >
+
+                <label>
+                    Create Password
+                </label>
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                >
+
+                <label>
+                    Confirm Password
+                </label>
+
+                <input
+                    type="password"
+                    name="confirm_password"
+                    placeholder="Confirm your password"
+                    required
+                >
+
+                <button type="submit">
+                    Activate My Account
+                </button>
+
+            </form>
+
+        </div>
+
+        <div class="footer">
+            After activation, open the UNIT
+            mobile app and sign in using this
+            email and password.
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

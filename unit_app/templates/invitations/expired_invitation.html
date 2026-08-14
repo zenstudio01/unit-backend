@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Invitation Expired | UNIT</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ================= HEADER ================= */
+
+        .header {
+            position: relative;
+            overflow: hidden;
+            background: #0B6B36;
+            min-height: 300px;
+            padding: 55px 20px 120px;
+            text-align: center;
+            color: white;
+        }
+
+        .header::before {
+            content: "";
+            position: absolute;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            top: -70px;
+            right: -50px;
+        }
+
+        .header::after {
+            content: "";
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            bottom: 20px;
+            left: -60px;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 38px;
+            font-weight: 800;
+        }
+
+        .header p {
+            max-width: 500px;
+            margin: 12px auto 0;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* ================= CONTAINER ================= */
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: -90px auto 60px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* ================= CARD ================= */
+
+        .card {
+            background: white;
+            border-radius: 30px;
+            padding: 40px 35px;
+            box-shadow:
+                0 15px 40px
+                rgba(15, 23, 42, 0.08);
+            border: 1px solid #f1f5f9;
+        }
+
+        /* ================= ICON ================= */
+
+        .icon-wrapper {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto;
+            border-radius: 50%;
+            background: #fff7ed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-inner {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #ffedd5;
+            color: #ea580c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 31px;
+            font-weight: 800;
+        }
+
+        /* ================= CONTENT ================= */
+
+        .center {
+            text-align: center;
+        }
+
+        .title {
+            margin: 25px 0 0;
+            font-size: 27px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .description {
+            margin: 12px auto 0;
+            max-width: 440px;
+            color: #64748b;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* ================= ORGANIZATION ================= */
+
+        .organization-card {
+            margin-top: 30px;
+            padding: 22px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 20px;
+        }
+
+        .organization-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .organization-icon {
+            flex-shrink: 0;
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: #eaf5ef;
+            color: #0B6B36;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .organization-info {
+            margin-left: 15px;
+            min-width: 0;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .organization-name {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        /* ================= EXPIRED BOX ================= */
+
+        .expired-box {
+            display: flex;
+            align-items: flex-start;
+            margin-top: 25px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 18px;
+            padding: 18px;
+        }
+
+        .expired-icon {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: #ffedd5;
+            color: #ea580c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .expired-content {
+            margin-left: 13px;
+        }
+
+        .expired-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #c2410c;
+        }
+
+        .expired-description {
+            margin-top: 5px;
+            color: #ea580c;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* ================= DETAILS ================= */
+
+        .details {
+            margin-top: 28px;
+        }
+
+        .details-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 14px 0;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 20px;
+        }
+
+        .detail-row:last-child {
+            border-bottom: 0;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .detail-value {
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        /* ================= NEXT STEP ================= */
+
+        .next-step {
+            margin-top: 30px;
+            padding: 23px;
+            background: #eaf5ef;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .next-step-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 13px;
+            border-radius: 15px;
+            background: #d7eee1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .next-step-title {
+            color: #0B6B36;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .next-step-description {
+            color: #337652;
+            font-size: 13px;
+            line-height: 1.7;
+            margin-top: 7px;
+        }
+
+        /* ================= SECURITY ================= */
+
+        .security {
+            margin-top: 25px;
+            padding: 17px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .security-icon {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .security-text {
+            margin-left: 12px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* ================= FOOTER ================= */
+
+        .help {
+            margin-top: 25px;
+            padding-top: 22px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .help p {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 0 20px 35px;
+        }
+
+        /* ================= MOBILE ================= */
+
+        @media (max-width: 600px) {
+
+            .header {
+                min-height: 270px;
+                padding-top: 45px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+            }
+
+            .container {
+                margin-top: -75px;
+            }
+
+            .card {
+                padding: 32px 22px;
+                border-radius: 26px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .detail-value {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="page">
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="header">
+
+        <div class="header-content">
+
+            <div class="brand">
+                UNIT
+            </div>
+
+            <h1>
+                Welcome to UNIT
+            </h1>
+
+            <p>
+                Securely connect with your organization
+                and manage property operations in one place.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= MAIN CARD ================= -->
+
+    <div class="container">
+
+        <div class="card">
+
+            <!-- EXPIRED ICON -->
+
+            <div class="icon-wrapper">
+
+                <div class="icon-inner">
+                    ⏱
+                </div>
+
+            </div>
+
+
+            <!-- MESSAGE -->
+
+            <div class="center">
+
+                <h2 class="title">
+                    Invitation Expired
+                </h2>
+
+                <p class="description">
+                    Unfortunately, this invitation is no
+                    longer valid because the activation
+                    period has expired.
+                </p>
+
+            </div>
+
+
+            <!-- ORGANIZATION -->
+
+            {% if invitation.organization %}
+
+            <div class="organization-card">
+
+                <div class="organization-header">
+
+                    <div class="organization-icon">
+                        🏢
+                    </div>
+
+                    <div class="organization-info">
+
+                        <div class="label">
+                            You were invited to
+                        </div>
+
+                        <div class="organization-name">
+                            {{ invitation.organization.name }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+
+            <!-- EXPIRED WARNING -->
+
+            <div class="expired-box">
+
+                <div class="expired-icon">
+                    !
+                </div>
+
+                <div class="expired-content">
+
+                    <div class="expired-title">
+                        This activation link has expired
+                    </div>
+
+                    <div class="expired-description">
+                        For your security, UNIT invitations
+                        are only valid for a limited period.
+                        This link can no longer be used to
+                        activate an account.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- INVITATION DETAILS -->
+
+            <div class="details">
+
+                <div class="details-title">
+                    Invitation Details
+                </div>
+
+                {% if invitation.email %}
+
+                <div class="detail-row">
+
+                    <div class="detail-label">
+                        Email Address
+                    </div>
+
+                    <div class="detail-value">
+                        {{ invitation.email }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if invitation.organization %}
+
+                <div class="detail-row">
+
+                    <div class="detail-label">
+                        Organization
+                    </div>
+
+                    <div class="detail-value">
+                        {{ invitation.organization.name }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if invitation.expires_at %}
+
+                <div class="detail-row">
+
+                    <div class="detail-label">
+                        Expired On
+                    </div>
+
+                    <div class="detail-value">
+                        {{ invitation.expires_at|date:"d M Y, H:i" }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if invitation.invited_by %}
+
+                <div class="detail-row">
+
+                    <div class="detail-label">
+                        Invited By
+                    </div>
+
+                    <div class="detail-value">
+
+                        {{ invitation.invited_by.first_name }}
+
+                        {% if invitation.invited_by.last_name %}
+                            {{ invitation.invited_by.last_name }}
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- NEXT STEP -->
+
+            <div class="next-step">
+
+                <div class="next-step-icon">
+                    ✉️
+                </div>
+
+                <div class="next-step-title">
+                    Request a New Invitation
+                </div>
+
+                <div class="next-step-description">
+                    Contact the person or organization
+                    administrator who invited you and ask
+                    them to send you a new UNIT invitation.
+                </div>
+
+            </div>
+
+
+            <!-- SECURITY MESSAGE -->
+
+            <div class="security">
+
+                <div class="security-icon">
+                    🔒
+                </div>
+
+                <div class="security-text">
+                    Expired invitation links cannot be
+                    reactivated. A new invitation must be
+                    generated by an authorized member of
+                    the organization.
+                </div>
+
+            </div>
+
+
+            <!-- HELP -->
+
+            <div class="help">
+
+                <p>
+                    If you believe this invitation should
+                    still be valid, contact the organization
+                    that invited you for assistance.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <div class="footer">
+        © {% now "Y" %} UNIT. All rights reserved.
+    </div>
+
+</div>
+
+</body>
+</html>

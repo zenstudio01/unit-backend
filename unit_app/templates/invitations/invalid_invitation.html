@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Invalid Invitation | UNIT</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ================= HEADER ================= */
+
+        .header {
+            position: relative;
+            overflow: hidden;
+            background: #0B6B36;
+            min-height: 300px;
+            padding: 55px 20px 120px;
+            text-align: center;
+            color: white;
+        }
+
+        .header::before {
+            content: "";
+            position: absolute;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            top: -70px;
+            right: -50px;
+        }
+
+        .header::after {
+            content: "";
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            bottom: 20px;
+            left: -60px;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 38px;
+            font-weight: 800;
+        }
+
+        .header p {
+            max-width: 500px;
+            margin: 12px auto 0;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* ================= CONTAINER ================= */
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: -90px auto 60px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* ================= CARD ================= */
+
+        .card {
+            background: #ffffff;
+            border-radius: 30px;
+            padding: 40px 35px;
+            box-shadow:
+                0 15px 40px
+                rgba(15, 23, 42, 0.08);
+            border: 1px solid #f1f5f9;
+        }
+
+        /* ================= ICON ================= */
+
+        .icon-wrapper {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto;
+            border-radius: 50%;
+            background: #fef2f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-inner {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #fee2e2;
+            color: #dc2626;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 31px;
+            font-weight: 900;
+        }
+
+        /* ================= CONTENT ================= */
+
+        .center {
+            text-align: center;
+        }
+
+        .title {
+            margin: 25px 0 0;
+            font-size: 27px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .description {
+            margin: 12px auto 0;
+            max-width: 440px;
+            color: #64748b;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* ================= ERROR BOX ================= */
+
+        .error-box {
+            display: flex;
+            align-items: flex-start;
+            margin-top: 30px;
+            padding: 18px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 18px;
+        }
+
+        .error-icon {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: #fee2e2;
+            color: #dc2626;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .error-content {
+            margin-left: 13px;
+        }
+
+        .error-title {
+            color: #b91c1c;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .error-description {
+            margin-top: 5px;
+            color: #dc2626;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* ================= REASONS ================= */
+
+        .reasons {
+            margin-top: 30px;
+        }
+
+        .reasons-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 16px;
+        }
+
+        .reason {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .reason:last-child {
+            margin-bottom: 0;
+        }
+
+        .reason-icon {
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            border-radius: 11px;
+            background: #f1f5f9;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .reason-content {
+            margin-left: 12px;
+        }
+
+        .reason-name {
+            color: #334155;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .reason-description {
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 3px;
+        }
+
+        /* ================= NEXT STEP ================= */
+
+        .next-step {
+            margin-top: 30px;
+            padding: 23px;
+            border-radius: 20px;
+            background: #eaf5ef;
+            text-align: center;
+        }
+
+        .next-step-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 13px;
+            border-radius: 16px;
+            background: #d7eee1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .next-step-title {
+            color: #0B6B36;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .next-step-description {
+            color: #337652;
+            font-size: 13px;
+            line-height: 1.7;
+            margin-top: 7px;
+        }
+
+        /* ================= SECURITY ================= */
+
+        .security-box {
+            margin-top: 25px;
+            padding: 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .security-icon {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .security-content {
+            margin-left: 12px;
+        }
+
+        .security-title {
+            font-size: 13px;
+            color: #334155;
+            font-weight: 800;
+        }
+
+        .security-description {
+            margin-top: 4px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* ================= HELP ================= */
+
+        .help {
+            margin-top: 25px;
+            padding-top: 22px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .help p {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        /* ================= FOOTER ================= */
+
+        .footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 0 20px 35px;
+        }
+
+        /* ================= MOBILE ================= */
+
+        @media (max-width: 600px) {
+
+            .header {
+                min-height: 270px;
+                padding-top: 45px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+            }
+
+            .container {
+                margin-top: -75px;
+            }
+
+            .card {
+                padding: 32px 22px;
+                border-radius: 26px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="page">
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="header">
+
+        <div class="header-content">
+
+            <div class="brand">
+                UNIT
+            </div>
+
+            <h1>
+                Welcome to UNIT
+            </h1>
+
+            <p>
+                Securely connect with your organization
+                and manage property operations in one place.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= MAIN ================= -->
+
+    <div class="container">
+
+        <div class="card">
+
+            <!-- INVALID ICON -->
+
+            <div class="icon-wrapper">
+
+                <div class="icon-inner">
+                    !
+                </div>
+
+            </div>
+
+
+            <!-- MESSAGE -->
+
+            <div class="center">
+
+                <h2 class="title">
+                    Invalid Invitation
+                </h2>
+
+                <p class="description">
+                    We couldn't verify this UNIT invitation.
+                    The invitation link may be invalid or
+                    no longer available.
+                </p>
+
+            </div>
+
+
+            <!-- ================= ERROR ================= -->
+
+            <div class="error-box">
+
+                <div class="error-icon">
+                    !
+                </div>
+
+                <div class="error-content">
+
+                    <div class="error-title">
+                        Invitation could not be verified
+                    </div>
+
+                    <div class="error-description">
+
+                        {% if message %}
+
+                            {{ message }}
+
+                        {% else %}
+
+                            This invitation link is not
+                            recognized by UNIT.
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= POSSIBLE REASONS ================= -->
+
+            <div class="reasons">
+
+                <div class="reasons-title">
+                    Why am I seeing this?
+                </div>
+
+
+                <div class="reason">
+
+                    <div class="reason-icon">
+                        1
+                    </div>
+
+                    <div class="reason-content">
+
+                        <div class="reason-name">
+                            The link may be incomplete
+                        </div>
+
+                        <div class="reason-description">
+                            Part of the invitation link may
+                            have been removed when it was
+                            copied or shared.
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="reason">
+
+                    <div class="reason-icon">
+                        2
+                    </div>
+
+                    <div class="reason-content">
+
+                        <div class="reason-name">
+                            The invitation may have been cancelled
+                        </div>
+
+                        <div class="reason-description">
+                            The organization administrator may
+                            have cancelled or replaced the
+                            invitation.
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="reason">
+
+                    <div class="reason-icon">
+                        3
+                    </div>
+
+                    <div class="reason-content">
+
+                        <div class="reason-name">
+                            The invitation does not exist
+                        </div>
+
+                        <div class="reason-description">
+                            UNIT could not find an invitation
+                            matching the provided activation
+                            token.
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= NEXT STEP ================= -->
+
+            <div class="next-step">
+
+                <div class="next-step-icon">
+                    ✉️
+                </div>
+
+                <div class="next-step-title">
+                    Ask for a New Invitation
+                </div>
+
+                <div class="next-step-description">
+                    Contact the property owner or organization
+                    administrator who invited you and ask them
+                    to send a new UNIT invitation to your
+                    email address.
+                </div>
+
+            </div>
+
+
+            <!-- ================= SECURITY ================= -->
+
+            <div class="security-box">
+
+                <div class="security-icon">
+                    🔒
+                </div>
+
+                <div class="security-content">
+
+                    <div class="security-title">
+                        Your security matters
+                    </div>
+
+                    <div class="security-description">
+                        UNIT does not activate accounts when
+                        an invitation cannot be verified.
+                        This helps prevent unauthorized access
+                        to organizations and property data.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= HELP ================= -->
+
+            <div class="help">
+
+                <p>
+                    If you received this link from a UNIT
+                    invitation email, try opening the original
+                    email and clicking the
+                    <strong>Activate Account</strong>
+                    button again.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <div class="footer">
+        © {% now "Y" %} UNIT. All rights reserved.
+    </div>
+
+</div>
+
+</body>
+</html>

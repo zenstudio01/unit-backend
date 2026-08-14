@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser,  BaseUserManager
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator
+import uuid
 
 
 # user model
@@ -261,6 +262,7 @@ class OrganizationMembership(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organization_memberships')
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='memberships')
     roles = models.ManyToManyField(Role, related_name='memberships')
+    primary_role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, related_name="primary_memberships")
     employee_number = models.CharField(max_length=50, unique=True)
     job_title = models.CharField(max_length=100, blank=True, null=True)
     is_primary_contact = models.BooleanField(default=False)
@@ -271,6 +273,97 @@ class OrganizationMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.organization.name} - {self.role.name}"
+
+
+
+class OrganizationInvitation(models.Model):
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("expired", "Expired"),
+        ("cancelled", "Cancelled"),
+    )
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+
+    first_name = models.CharField(
+        max_length=100
+    )
+
+    middle_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+
+    last_name = models.CharField(
+        max_length=100
+    )
+
+    email = models.EmailField()
+
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+    )
+
+    roles = models.ManyToManyField(
+        Role,
+        related_name="invitations",
+    )
+
+    primary_role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="primary_invitations",
+    )
+
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_invitations",
+    )
+
+    token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+
+    expires_at = models.DateTimeField()
+
+    accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+        return (
+            f"{self.email} - "
+            f"{self.organization.name}"
+        )
 
 class Portifolio(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='portifolios')

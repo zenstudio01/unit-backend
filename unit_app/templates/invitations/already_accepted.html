@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Invitation Already Accepted | UNIT</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ================= HEADER ================= */
+
+        .header {
+            position: relative;
+            overflow: hidden;
+            background: #0B6B36;
+            min-height: 300px;
+            padding: 55px 20px 120px;
+            text-align: center;
+            color: white;
+        }
+
+        .header::before {
+            content: "";
+            position: absolute;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            top: -70px;
+            right: -50px;
+        }
+
+        .header::after {
+            content: "";
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            bottom: 20px;
+            left: -60px;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 38px;
+            font-weight: 800;
+        }
+
+        .header p {
+            max-width: 500px;
+            margin: 12px auto 0;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* ================= CARD ================= */
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: -90px auto 60px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .card {
+            background: white;
+            border-radius: 30px;
+            padding: 40px 35px;
+            box-shadow:
+                0 15px 40px
+                rgba(15, 23, 42, 0.08);
+            border: 1px solid #f1f5f9;
+        }
+
+        /* ================= ICON ================= */
+
+        .icon-wrapper {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto;
+            border-radius: 50%;
+            background: #ecfdf5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-inner {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #d1fae5;
+            color: #0B6B36;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            font-weight: 800;
+        }
+
+        /* ================= CONTENT ================= */
+
+        .center {
+            text-align: center;
+        }
+
+        .title {
+            margin: 25px 0 0;
+            font-size: 27px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .description {
+            margin: 12px auto 0;
+            max-width: 430px;
+            color: #64748b;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* ================= ORGANIZATION ================= */
+
+        .organization-card {
+            margin-top: 30px;
+            padding: 22px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 20px;
+        }
+
+        .organization-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .organization-icon {
+            flex-shrink: 0;
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: #eaf5ef;
+            color: #0B6B36;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .organization-info {
+            margin-left: 15px;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .organization-name {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        /* ================= STATUS ================= */
+
+        .status-box {
+            display: flex;
+            align-items: flex-start;
+            margin-top: 25px;
+            background: #ecfdf5;
+            border: 1px solid #d1fae5;
+            border-radius: 18px;
+            padding: 18px;
+        }
+
+        .status-icon {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: #d1fae5;
+            color: #0B6B36;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+        }
+
+        .status-content {
+            margin-left: 13px;
+        }
+
+        .status-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #065f46;
+        }
+
+        .status-description {
+            margin-top: 4px;
+            color: #047857;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* ================= NEXT STEPS ================= */
+
+        .next-steps {
+            margin-top: 30px;
+        }
+
+        .next-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 15px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .step-number {
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: #eaf5ef;
+            color: #0B6B36;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .step-text {
+            margin-left: 12px;
+            color: #475569;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* ================= BUTTON STYLE ================= */
+
+        .app-box {
+            margin-top: 30px;
+            padding: 22px;
+            border-radius: 20px;
+            background: #0B6B36;
+            color: white;
+            text-align: center;
+        }
+
+        .app-box-title {
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .app-box-description {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 7px;
+        }
+
+        /* ================= HELP ================= */
+
+        .help {
+            margin-top: 25px;
+            padding-top: 22px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .help p {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 0 20px 35px;
+        }
+
+        /* ================= MOBILE ================= */
+
+        @media (max-width: 600px) {
+
+            .header {
+                min-height: 270px;
+                padding-top: 45px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+            }
+
+            .container {
+                margin-top: -75px;
+            }
+
+            .card {
+                padding: 32px 22px;
+                border-radius: 26px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="page">
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="header">
+
+        <div class="header-content">
+
+            <div class="brand">
+                UNIT
+            </div>
+
+            <h1>
+                Welcome to UNIT
+            </h1>
+
+            <p>
+                Property management made simpler,
+                smarter and more connected.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= MAIN ================= -->
+
+    <div class="container">
+
+        <div class="card">
+
+            <!-- ICON -->
+
+            <div class="icon-wrapper">
+
+                <div class="icon-inner">
+                    ✓
+                </div>
+
+            </div>
+
+
+            <!-- MESSAGE -->
+
+            <div class="center">
+
+                <h2 class="title">
+                    Invitation Already Accepted
+                </h2>
+
+                <p class="description">
+                    This invitation has already been used
+                    to activate your UNIT account. You don't
+                    need to activate it again.
+                </p>
+
+            </div>
+
+
+            <!-- ORGANIZATION -->
+
+            {% if invitation.organization %}
+
+            <div class="organization-card">
+
+                <div class="organization-header">
+
+                    <div class="organization-icon">
+                        🏢
+                    </div>
+
+                    <div class="organization-info">
+
+                        <div class="label">
+                            Organization
+                        </div>
+
+                        <div class="organization-name">
+                            {{ invitation.organization.name }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+
+            <!-- STATUS -->
+
+            <div class="status-box">
+
+                <div class="status-icon">
+                    ✓
+                </div>
+
+                <div class="status-content">
+
+                    <div class="status-title">
+                        Your account is already active
+                    </div>
+
+                    <div class="status-description">
+                        Your organization access has already
+                        been configured. You can sign in to
+                        the UNIT mobile app using your account.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- NEXT STEPS -->
+
+            <div class="next-steps">
+
+                <div class="next-title">
+                    What should I do now?
+                </div>
+
+                <div class="step">
+
+                    <div class="step-number">
+                        1
+                    </div>
+
+                    <div class="step-text">
+                        Open the UNIT mobile application.
+                    </div>
+
+                </div>
+
+                <div class="step">
+
+                    <div class="step-number">
+                        2
+                    </div>
+
+                    <div class="step-text">
+                        Sign in using
+                        <strong>
+                            {{ invitation.email }}
+                        </strong>
+                    </div>
+
+                </div>
+
+                <div class="step">
+
+                    <div class="step-number">
+                        3
+                    </div>
+
+                    <div class="step-text">
+                        Use the password you created when
+                        you first accepted this invitation.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- MOBILE APP -->
+
+            <div class="app-box">
+
+                <div class="app-box-title">
+                    Continue in the UNIT App
+                </div>
+
+                <div class="app-box-description">
+                    Your account is ready. Open UNIT and
+                    sign in to access your organization
+                    workspace.
+                </div>
+
+            </div>
+
+
+            <!-- HELP -->
+
+            <div class="help">
+
+                <p>
+                    Can't remember your password?
+                    Open the UNIT mobile app and use
+                    <strong>Forgot Password</strong>
+                    on the sign-in screen.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <div class="footer">
+        © {% now "Y" %} UNIT. All rights reserved.
+    </div>
+
+</div>
+
+</body>
+</html>

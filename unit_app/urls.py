@@ -12,6 +12,8 @@ from .api_views.reports import *
 from .api_views.statements import *
 from .api_views.owner_profile import *
 from .api_views.owner_notifications import *
+from .api_views.team import *
+from .api_views.invitations import *
 
 
 
@@ -33,6 +35,7 @@ from .api_views.chat import *
 from .api_views.maintenance import *
 from .api_views.announcements import *
 from .api_views.services import *
+from .api_views.roles import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -103,6 +106,27 @@ urlpatterns = [
     path("notifications/", get_notifications, name="get_notifications"),
     path("notifications/<int:notification_id>/read/", mark_notification_read, name="mark_notification_read"),
     path("notifications/read-all/", mark_all_notifications_read, name="mark_all_notifications_read"),
+
+    # team
+    path("team/", get_team_members, name="get_team_members"),
+    path("team/roles/", get_team_roles, name="get_team_roles"),
+    path("team/add/", add_team_member, name="add_team_member"),
+
+
+    # roles
+    path("roles/options/", get_role_options, name="get_role_options"),
+    path("roles/create/", create_role, name="create_role"),
+    path("roles/", get_organization_roles, name="get_organization_roles"),
+    path("roles/<int:role_id>/", get_role_details, name="get_role_details"),
+    path("roles/<int:role_id>/update/", update_role, name="update_role"),
+    path("roles/<int:role_id>/status/", update_role_status, name="update_role_status"),
+    path("roles/<int:role_id>/delete/", delete_role, name="delete_role"),
+
+
+    # invitations
+    path("invitations/details/", get_invitation_details, name="get_invitation_details"),
+    path("invitations/accept/", accept_invitation, name="accept_invitation"),
+    path("invitations/accept_invitation/", accept_invitation_web, name="accept_invitation_web"),
 
 
 

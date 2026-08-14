@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Account Activated | UNIT
+    </title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #f8fafc;
+            font-family: Arial, sans-serif;
+            color: #0f172a;
+        }
+
+        .wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 520px;
+            background: white;
+            padding: 45px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow:
+                0 12px 35px
+                rgba(0,0,0,.08);
+        }
+
+        .icon {
+            width: 85px;
+            height: 85px;
+            border-radius: 50%;
+            background: #dcfce7;
+            color: #16a34a;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            margin-top: 25px;
+        }
+
+        p {
+            color: #64748b;
+            line-height: 1.7;
+        }
+
+        .organization {
+            background: #f8fafc;
+            border-radius: 18px;
+            padding: 18px;
+            margin-top: 25px;
+        }
+
+        .app-message {
+            margin-top: 30px;
+            background: #eaf5ef;
+            color: #0B6B36;
+            padding: 18px;
+            border-radius: 16px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+    <div class="card">
+
+        <div class="icon">
+            ✓
+        </div>
+
+        <h1>
+            Account Activated!
+        </h1>
+
+        <p>
+            Your UNIT account has been
+            successfully activated.
+        </p>
+
+        <div class="organization">
+
+            <strong>
+                {{ organization.name }}
+            </strong>
+
+            <p>
+                You now have access to this
+                organization.
+            </p>
+
+        </div>
+
+        <div class="app-message">
+            Open the UNIT mobile app and
+            sign in using your email address
+            and the password you just created.
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>
