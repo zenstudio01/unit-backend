@@ -506,11 +506,54 @@ class Unit(models.Model):
 
 
 class Amenity(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True, null=True)
-    amenity_type = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="amenities",
+        null=True,
+        blank=True,
+    )
+
+    name = models.CharField(
+        max_length=100
+    )
+
+    description = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    amenity_type = models.CharField(
+        max_length=100
+    )
+
+    is_system = models.BooleanField(
+        default=False
+    )
+
+    is_active = models.BooleanField(
+        default=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "organization",
+                    "name",
+                ],
+                name=
+                    "unique_organization_amenity",
+            )
+        ]
 
     def __str__(self):
         return self.name

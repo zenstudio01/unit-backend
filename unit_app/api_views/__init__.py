@@ -6,6 +6,8 @@ from .owner_profile import *
 from .team import *
 from .roles import *
 from .invitations import *
+from .prop_units import *
+from .property_structure import *
 
 
 

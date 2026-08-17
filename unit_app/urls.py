@@ -14,6 +14,8 @@ from .api_views.owner_profile import *
 from .api_views.owner_notifications import *
 from .api_views.team import *
 from .api_views.invitations import *
+from .api_views.prop_units import *
+from .api_views.property_structure import *
 
 
 
@@ -127,6 +129,19 @@ urlpatterns = [
     path("invitations/details/", get_invitation_details, name="get_invitation_details"),
     path("invitations/accept/", accept_invitation, name="accept_invitation"),
     path("invitations/accept_invitation/", accept_invitation_web, name="accept_invitation_web"),
+
+    # prop units
+    path("units/form_options/",unit_form_options, name="unit_form_options"),
+    path("units/create/", create_unit, name="create_unit"),
+    path("units/bulk_create/", bulk_create_units, name="bulk_create_units"),
+
+
+    # property structure
+    path("properties/<int:property_id>/structure/", property_structure, name="property_structure"),
+    path("buildings/create/", create_building, name="create_building"),
+    path("floors/create/", create_floor, name="create_floor"),
+    path("amenities/", get_amenities, name="get_amenities"),
+    path("amenities/create/", create_amenity, name="create_amenity"),
 
 
 

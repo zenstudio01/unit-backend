@@ -455,21 +455,33 @@ def manager_dashboard(request):
         # -------------------------------------------------
 
         property_payments = (
-            Payment.objects
-            .filter(
-                organization=organization,
-                property=property_obj,
-                status="completed",
-                paid_at__gte=
-                    month_start,
-                paid_at__lt=
-                    next_month,
-            )
-            .aggregate(
-                total=Sum("amount")
-            )["total"]
-            or Decimal("0.00")
+    PaymentAllocation.objects
+    .filter(
+        payment__organization=
+            organization,
+
+        payment__status=
+            "completed",
+
+        payment__paid_at__gte=
+            month_start,
+
+        payment__paid_at__lt=
+            next_month,
+
+        invoice__property=
+            property_obj,
+
+        invoice__invoice_type=
+            "rent",
+    )
+    .aggregate(
+        total=Sum(
+            "allocated_amount"
         )
+    )["total"]
+    or Decimal("0.00")
+)
 
         # -------------------------------------------------
         # Property image
