@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, UserProfile, UserSession, OTPVerification, Organization, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, OrganizationInvitation, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification
+from .models import User, UserProfile, UserSession, TenantUnitAssignment, OTPVerification, Organization, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, OrganizationInvitation, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification
 
 
 admin.site.register(User)
@@ -21,6 +21,7 @@ admin.site.register(Floor)
 admin.site.register(Unit)
 admin.site.register(Amenity)
 admin.site.register(PropertyAmenity)
+admin.site.register(TenantUnitAssignment)
 admin.site.register(UnitAmenity)
 admin.site.register(Asset)
 admin.site.register(AssetDepreciationEntries)

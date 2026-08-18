@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Account Activated | UNIT</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f8fafc 0%,
+                    #eef7f1 100%
+                );
+
+            color: #0f172a;
+        }
+
+        /* =====================================================
+           PAGE
+        ===================================================== */
+
+        .page {
+            min-height: 100vh;
+        }
+
+        /* =====================================================
+           HEADER
+        ===================================================== */
+
+        .header {
+            position: relative;
+
+            overflow: hidden;
+
+            background: #0B6B36;
+
+            min-height: 310px;
+
+            padding:
+                55px
+                20px
+                130px;
+
+            color: white;
+
+            text-align: center;
+        }
+
+        .header::before {
+            content: "";
+
+            position: absolute;
+
+            width: 210px;
+            height: 210px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.08
+                );
+
+            top: -80px;
+            right: -55px;
+        }
+
+        .header::after {
+            content: "";
+
+            position: absolute;
+
+            width: 160px;
+            height: 160px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.08
+                );
+
+            bottom: 15px;
+            left: -65px;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .brand {
+            display: inline-flex;
+
+            align-items: center;
+            justify-content: center;
+
+            padding:
+                8px
+                17px;
+
+            border-radius: 30px;
+
+            background:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.13
+                );
+
+            border:
+                1px solid
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.15
+                );
+
+            font-size: 13px;
+            font-weight: 800;
+
+            letter-spacing: 1px;
+
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 38px;
+
+            font-weight: 900;
+
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            max-width: 520px;
+
+            margin:
+                13px
+                auto
+                0;
+
+            color:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.78
+                );
+
+            font-size: 16px;
+
+            line-height: 1.65;
+        }
+
+        /* =====================================================
+           CONTAINER
+        ===================================================== */
+
+        .container {
+            width: 100%;
+
+            max-width: 620px;
+
+            margin:
+                -95px
+                auto
+                70px;
+
+            padding:
+                0
+                20px;
+
+            position: relative;
+
+            z-index: 5;
+        }
+
+        /* =====================================================
+           CARD
+        ===================================================== */
+
+        .card {
+            background: #ffffff;
+
+            border:
+                1px solid
+                #f1f5f9;
+
+            border-radius: 32px;
+
+            padding:
+                42px
+                36px;
+
+            box-shadow:
+                0
+                18px
+                50px
+                rgba(
+                    15,
+                    23,
+                    42,
+                    0.09
+                );
+
+            text-align: center;
+        }
+
+        /* =====================================================
+           SUCCESS ICON
+        ===================================================== */
+
+        .success-wrapper {
+            width: 100px;
+            height: 100px;
+
+            margin:
+                0
+                auto
+                26px;
+
+            border-radius: 50%;
+
+            background: #ecfdf5;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success-icon {
+            width: 70px;
+            height: 70px;
+
+            border-radius: 50%;
+
+            background: #d1fae5;
+
+            color: #0B6B36;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            font-size: 37px;
+            font-weight: 900;
+        }
+
+        /* =====================================================
+           CONTENT
+        ===================================================== */
+
+        .title {
+            font-size: 29px;
+
+            font-weight: 900;
+
+            color: #0f172a;
+
+            letter-spacing: -0.7px;
+        }
+
+        .description {
+            max-width: 450px;
+
+            margin:
+                13px
+                auto
+                0;
+
+            color: #64748b;
+
+            font-size: 15px;
+
+            line-height: 1.75;
+        }
+
+        .tenant-name {
+            color: #0B6B36;
+
+            font-weight: 800;
+        }
+
+        /* =====================================================
+           ACCOUNT STATUS
+        ===================================================== */
+
+        .status {
+            margin-top: 30px;
+
+            background: #ecfdf5;
+
+            border:
+                1px solid
+                #d1fae5;
+
+            border-radius: 20px;
+
+            padding: 20px;
+
+            text-align: left;
+
+            display: flex;
+
+            align-items: flex-start;
+        }
+
+        .status-icon {
+            width: 42px;
+            height: 42px;
+
+            flex-shrink: 0;
+
+            border-radius: 13px;
+
+            background: #d1fae5;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            color: #0B6B36;
+
+            font-size: 20px;
+            font-weight: 900;
+        }
+
+        .status-content {
+            margin-left: 14px;
+        }
+
+        .status-title {
+            color: #065f46;
+
+            font-size: 15px;
+
+            font-weight: 800;
+        }
+
+        .status-description {
+            color: #047857;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+
+            margin-top: 5px;
+        }
+
+        /* =====================================================
+           TENANCY DETAILS
+        ===================================================== */
+
+        .details {
+            margin-top: 28px;
+
+            background: #f8fafc;
+
+            border:
+                1px solid
+                #f1f5f9;
+
+            border-radius: 20px;
+
+            padding: 22px;
+
+            text-align: left;
+        }
+
+        .details-title {
+            color: #0f172a;
+
+            font-size: 16px;
+
+            font-weight: 800;
+
+            margin-bottom: 16px;
+        }
+
+        .row {
+            padding:
+                13px
+                0;
+
+            border-bottom:
+                1px solid
+                #e9eef5;
+        }
+
+        .row:last-child {
+            border-bottom: 0;
+        }
+
+        .label {
+            color: #94a3b8;
+
+            font-size: 11px;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.5px;
+
+            font-weight: 700;
+        }
+
+        .value {
+            color: #0f172a;
+
+            font-size: 15px;
+
+            font-weight: 700;
+
+            margin-top: 5px;
+        }
+
+        .unit-value {
+            color: #0B6B36;
+        }
+
+        /* =====================================================
+           NEXT STEPS
+        ===================================================== */
+
+        .next-steps {
+            margin-top: 30px;
+
+            text-align: left;
+        }
+
+        .next-title {
+            color: #0f172a;
+
+            font-size: 17px;
+
+            font-weight: 800;
+
+            margin-bottom: 17px;
+        }
+
+        .step {
+            display: flex;
+
+            align-items: flex-start;
+
+            margin-bottom: 15px;
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-number {
+            width: 35px;
+            height: 35px;
+
+            min-width: 35px;
+
+            border-radius: 50%;
+
+            background: #eaf5ef;
+
+            color: #0B6B36;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            font-size: 13px;
+
+            font-weight: 900;
+        }
+
+        .step-content {
+            margin-left: 13px;
+        }
+
+        .step-title {
+            color: #334155;
+
+            font-size: 14px;
+
+            font-weight: 800;
+        }
+
+        .step-text {
+            color: #64748b;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+
+            margin-top: 3px;
+        }
+
+        /* =====================================================
+           APP CTA
+        ===================================================== */
+
+        .app-card {
+            margin-top: 30px;
+
+            padding:
+                25px
+                22px;
+
+            border-radius: 22px;
+
+            background: #0B6B36;
+
+            color: white;
+        }
+
+        .app-icon {
+            width: 52px;
+            height: 52px;
+
+            margin:
+                0
+                auto
+                14px;
+
+            border-radius: 16px;
+
+            background:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.13
+                );
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            font-size: 23px;
+        }
+
+        .app-title {
+            font-size: 18px;
+
+            font-weight: 900;
+        }
+
+        .app-description {
+            color:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.77
+                );
+
+            font-size: 13px;
+
+            line-height: 1.7;
+
+            margin-top: 7px;
+        }
+
+        .email {
+            color: #ffffff;
+
+            font-weight: 800;
+
+            word-break: break-word;
+        }
+
+        /* =====================================================
+           SECURITY
+        ===================================================== */
+
+        .security {
+            margin-top: 25px;
+
+            border-top:
+                1px solid
+                #e2e8f0;
+
+            padding-top: 22px;
+
+            color: #94a3b8;
+
+            font-size: 12px;
+
+            line-height: 1.7;
+        }
+
+        /* =====================================================
+           FOOTER
+        ===================================================== */
+
+        .footer {
+            margin-top: 24px;
+
+            color: #94a3b8;
+
+            font-size: 12px;
+
+            line-height: 1.6;
+
+            text-align: center;
+        }
+
+        /* =====================================================
+           MOBILE
+        ===================================================== */
+
+        @media (max-width: 600px) {
+
+            .header {
+                min-height: 280px;
+
+                padding:
+                    45px
+                    18px
+                    115px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+            }
+
+            .container {
+                margin-top: -80px;
+            }
+
+            .card {
+                padding:
+                    33px
+                    22px;
+
+                border-radius: 27px;
+            }
+
+            .title {
+                font-size: 25px;
+            }
+
+            .details {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="page">
+
+    <!-- =================================================
+         HEADER
+    ================================================== -->
+
+    <header class="header">
+
+        <div class="header-content">
+
+            <div class="brand">
+                UNIT
+            </div>
+
+            <h1>
+                Account Activated
+            </h1>
+
+            <p>
+                Your account setup is complete.
+                You can now access UNIT using the
+                mobile application.
+            </p>
+
+        </div>
+
+    </header>
+
+
+    <!-- =================================================
+         CONTENT
+    ================================================== -->
+
+    <main class="container">
+
+        <section class="card">
+
+            <!-- SUCCESS ICON -->
+
+            <div class="success-wrapper">
+
+                <div class="success-icon">
+                    ✓
+                </div>
+
+            </div>
+
+
+            <!-- TITLE -->
+
+            <h2 class="title">
+                You're All Set!
+            </h2>
+
+
+            <p class="description">
+
+                Welcome,
+
+                <span class="tenant-name">
+                    {{ tenant.full_name }}
+                </span>.
+
+                Your UNIT account has been successfully
+                activated and your password has been
+                created.
+
+            </p>
+
+
+            <!-- =================================================
+                 STATUS
+            ================================================== -->
+
+            <div class="status">
+
+                <div class="status-icon">
+                    ✓
+                </div>
+
+                <div class="status-content">
+
+                    <div class="status-title">
+                        Your account is now active
+                    </div>
+
+                    <div class="status-description">
+
+                        You can now sign in to the UNIT
+                        mobile application using your
+                        registered email address and
+                        the password you just created.
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 TENANCY DETAILS
+            ================================================== -->
+
+            <div class="details">
+
+                <div class="details-title">
+                    Your Account Details
+                </div>
+
+
+                <!-- EMAIL -->
+
+                <div class="row">
+
+                    <div class="label">
+                        Login Email
+                    </div>
+
+                    <div class="value">
+                        {{ tenant.email }}
+                    </div>
+
+                </div>
+
+
+                <!-- ORGANIZATION -->
+
+                {% if tenant.organization %}
+
+                <div class="row">
+
+                    <div class="label">
+                        Organization
+                    </div>
+
+                    <div class="value">
+                        {{ tenant.organization.name }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                <!-- PROPERTY -->
+
+                {% if assignment and assignment.property %}
+
+                <div class="row">
+
+                    <div class="label">
+                        Property
+                    </div>
+
+                    <div class="value">
+                        {{ assignment.property.name }}
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                <!-- UNIT -->
+
+                {% if assignment and assignment.unit %}
+
+                <div class="row">
+
+                    <div class="label">
+                        Assigned Unit
+                    </div>
+
+                    <div class="value unit-value">
+
+                        {{ assignment.unit.name }}
+
+                        {% if assignment.unit.unit_code %}
+
+                            (
+                            {{ assignment.unit.unit_code }}
+                            )
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+
+                <!-- MOVE IN -->
+
+                {% if assignment and assignment.move_in_date %}
+
+                <div class="row">
+
+                    <div class="label">
+                        Move In Date
+                    </div>
+
+                    <div class="value">
+
+                        {{ assignment.move_in_date|date:"d M Y" }}
+
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- =================================================
+                 NEXT STEPS
+            ================================================== -->
+
+            <div class="next-steps">
+
+                <div class="next-title">
+                    What happens next?
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        1
+                    </div>
+
+                    <div class="step-content">
+
+                        <div class="step-title">
+                            Open the UNIT app
+                        </div>
+
+                        <div class="step-text">
+
+                            Open the UNIT mobile application
+                            on your phone.
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        2
+                    </div>
+
+                    <div class="step-content">
+
+                        <div class="step-title">
+                            Sign in
+                        </div>
+
+                        <div class="step-text">
+
+                            Use
+
+                            <strong>
+                                {{ tenant.email }}
+                            </strong>
+
+                            together with the password
+                            you just created.
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="step">
+
+                    <div class="step-number">
+                        3
+                    </div>
+
+                    <div class="step-content">
+
+                        <div class="step-title">
+                            Access your tenant account
+                        </div>
+
+                        <div class="step-text">
+
+                            You'll be able to access your
+                            assigned property, payments,
+                            maintenance services and
+                            other tenant features available
+                            to your organization.
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 APP CTA
+            ================================================== -->
+
+            <div class="app-card">
+
+                <div class="app-icon">
+                    📱
+                </div>
+
+                <div class="app-title">
+                    Continue in the UNIT App
+                </div>
+
+                <div class="app-description">
+
+                    Sign in using
+
+                    <span class="email">
+                        {{ tenant.email }}
+                    </span>
+
+                    and the password you just created.
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 SECURITY
+            ================================================== -->
+
+            <div class="security">
+
+                Your activation link has now been used
+                and cannot be used to create another
+                password.
+
+                If you forget your password later,
+                use the
+
+                <strong>
+                    Forgot Password
+                </strong>
+
+                option on the UNIT sign-in screen.
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             FOOTER
+        ================================================== -->
+
+        <div class="footer">
+
+            <div>
+                © {% now "Y" %} UNIT. All rights reserved.
+            </div>
+
+            <div>
+                Secure Property Management
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+</body>
+</html>

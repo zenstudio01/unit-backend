@@ -736,6 +736,89 @@ class Tenant(models.Model):
         return f"{self.full_name} ({self.tenant_type})"
 
 
+class TenantUnitAssignment(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="tenant_unit_assignments",
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="unit_assignments",
+    )
+
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="tenant_assignments",
+    )
+
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.PROTECT,
+        related_name="tenant_assignments",
+    )
+
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_tenant_assignments",
+    )
+
+    move_in_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    assigned_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    ended_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["unit"],
+                condition=models.Q(
+                    is_active=True
+                ),
+                name=
+                    "unique_active_tenant_unit",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.tenant.full_name} - "
+            f"{self.unit.unit_code}"
+        )
+
+
 
 
 class TenantEmergencyContact(models.Model):

@@ -8,6 +8,9 @@ from .roles import *
 from .invitations import *
 from .prop_units import *
 from .property_structure import *
+from .tenant_payment import *
+from .tenant_profile import *
+from .tenant_notifications import *
 
 
 

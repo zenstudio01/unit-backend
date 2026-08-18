@@ -16,6 +16,12 @@ from .api_views.team import *
 from .api_views.invitations import *
 from .api_views.prop_units import *
 from .api_views.property_structure import *
+from .api_views.tenant_payment import *
+from .api_views.tenant_profile import *
+from .api_views.tenant_notifications import *
+
+
+
 
 
 
@@ -144,6 +150,34 @@ urlpatterns = [
     path("amenities/create/", create_amenity, name="create_amenity"),
 
 
+    # tenants
+    path("tenants/properties/", tenant_properties, name="tenant_properties"),
+    path("tenants/available-units/", available_property_units, name="available_property_units"),
+    path("tenants/create-and-assign/", create_and_assign_tenant, name="create_and_assign_tenant"),
+    path("tenant/activate/", activate_tenant_web, name="activate_tenant_web"),
+
+    path("dashboard/tenant/", tenant_dashboard, name="tenant_dashboard"),
+    path("tenant/maintenance/", tenant_maintenance_list, name="tenant_maintenance_list"),
+    path("tenant/maintenance/<int:ticket_id>/", tenant_maintenance_detail, name="tenant_maintenance_detail"),
+    
+
+    # tenant payments
+    path("tenant/payments/", tenant_payments, name="tenant_payments"),
+    path("tenant/payments/initiate/", initiate_tenant_payment, name="initiate_tenant_payment"),
+    path("payments/mpesa/callback/", mpesa_payment_callback, name="mpesa_payment_callback"),
+
+
+
+    # tenant profile
+    path("tenant/profile/",tenant_profile, name="tenant_profile"),
+    path("tenant/profile/update/", update_tenant_profile, name="update_tenant_profile"),
+    path("tenant/change-password/", tenant_change_password, name="tenant_change_password"),
+
+    # tenant notifications
+    path("tenant/notifications/", tenant_notifications, name="tenant_notifications"),
+    path("tenant/notifications/<int:notification_id>/read/", tenant_notification_mark_read, name="tenant_notification_mark_read"),
+    path("tenant/notifications/read-all/", tenant_notifications_mark_all_read, name="tenant_notifications_mark_all_read"),
+
 
 
 
@@ -155,17 +189,6 @@ urlpatterns = [
     path('property_list/', property_list, name='property_list'),
     path('property_create/', property_create, name='property_create'),
 
-    # tenants
-    path('get_tenants/', get_tenants, name='get_tenants'),
-    path('add_tenant/', add_tenant, name='add_tenant'),
-    path('request_rent/', request_rent, name='request_rent'),
-    path("get_properties_with_units/", get_properties_with_units, name="get_properties_with_units"),
-    path('tenant_dashboard/', tenant_dashboard, name='tenant_dashboard'),
-    path('tenant_announcements/', tenant_announcements, name='tenant_announcements'),
-    path('create_maintenance_request/', create_maintenance_request, name='create_maintenance_request'),
-    path('get_my_maintenance_requests/', get_my_maintenance_requests, name='get_my_maintenance_requests'),
-    path("tenant_rent_payments/", tenant_rent_payments, name='tenant_rent_payments'),
-    path("tenant_profile/", tenant_profile, name="tenant_profile"),
 
     # admin - users
     path('admin/users/', admin_users_list, name='admin_users_list'),
