@@ -1703,6 +1703,112 @@ class Notification(models.Model):
 
 
 
+class KaskaziMaintenanceBooking(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("requested", "Requested"),
+        ("accepted", "Accepted"),
+        ("assigned", "Assigned"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+        ("failed", "Failed"),
+    ]
+
+    maintenance_ticket = models.OneToOneField(
+        MaintenanceTicket,
+        on_delete=models.CASCADE,
+        related_name="kaskazi_booking",
+    )
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="kaskazi_maintenance_bookings",
+    )
+
+    external_booking_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+    )
+
+    external_worker_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    worker_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    worker_phone = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+    )
+
+    service_code = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+    )
+
+    service_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="requested",
+    )
+
+    scheduled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    quoted_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    final_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    external_reference = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+
+
 
 
 
