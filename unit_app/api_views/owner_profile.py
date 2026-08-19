@@ -739,7 +739,6 @@ def update_owner_profile(request):
                     "date_of_birth": (
                         profile
                         .date_of_birth
-                        .isoformat()
 
                         if profile
                         .date_of_birth
