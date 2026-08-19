@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, UserProfile, UserSession, TenantUnitAssignment, OTPVerification, Organization, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, OrganizationInvitation, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification, KaskaziMaintenanceBooking
+from .models import User, UserProfile, UserSession, TenantUnitAssignment, OTPVerification, Organization, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, OrganizationInvitation, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification, KaskaziMaintenanceBooking, SubscriptionPackage, OrganizationSubscription, SubscriptionPayment
 
 
 admin.site.register(User)
@@ -55,6 +55,9 @@ admin.site.register(MaintenanceApproval)
 admin.site.register(MaintenanceWarranty)
 admin.site.register(Notification)
 admin.site.register(KaskaziMaintenanceBooking)
+admin.site.register(SubscriptionPackage)
+admin.site.register(OrganizationSubscription)
+admin.site.register(SubscriptionPayment)
 
 
 

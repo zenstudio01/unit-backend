@@ -1,6 +1,11 @@
 import os
 import requests
 import resend
+import cloudinary.uploader
+from datetime import timedelta
+from django.utils import timezone
+
+from unit_app.models import SubscriptionPackage, OrganizationSubscription
 
 
 # send push notification to phne
@@ -47,7 +52,7 @@ def send_email(to_email, subject, html):
 
 
 
-import cloudinary.uploader
+
 
 
 def upload_maintenance_image(
@@ -76,3 +81,52 @@ def upload_maintenance_image(
                 "secure_url"
             ),
     }
+
+
+# helper function for creating trial subscription
+
+def create_trial_subscription(
+    organization,
+):
+    package = (
+        SubscriptionPackage.objects
+        .filter(
+            code="growth",
+            is_active=True,
+        )
+        .first()
+    )
+
+    if not package:
+        raise ValueError(
+            "Growth subscription package has not been configured."
+        )
+
+    now = (
+        timezone.now()
+    )
+
+    return (
+        OrganizationSubscription.objects.create(
+            organization=
+                organization,
+
+            package=
+                package,
+
+            status=
+                "trial",
+
+            billing_cycle=
+                "monthly",
+
+            trial_start=
+                now,
+
+            trial_end=
+                now +
+                timedelta(
+                    days=30
+                ),
+        )
+    )

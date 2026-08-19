@@ -1807,7 +1807,351 @@ class KaskaziMaintenanceBooking(models.Model):
         auto_now=True,
     )
 
+# subscriptions and packages
+class SubscriptionPackage(models.Model):
+    BILLING_CYCLE_CHOICES = [
+        ("monthly", "Monthly"),
+        ("yearly", "Yearly"),
+    ]
 
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+    )
+
+    name = models.CharField(
+        max_length=100,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    monthly_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+
+    yearly_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+
+    max_properties = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Null means unlimited.",
+    )
+
+    max_units = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Null means unlimited.",
+    )
+
+    max_users = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum organization members. Null means unlimited.",
+    )
+
+    max_portfolios = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Null means unlimited.",
+    )
+
+    has_maintenance = models.BooleanField(
+        default=True,
+    )
+
+    has_kaskazi_integration = models.BooleanField(
+        default=False,
+    )
+
+    has_financial_reports = models.BooleanField(
+        default=False,
+    )
+
+    has_advanced_reports = models.BooleanField(
+        default=False,
+    )
+
+    has_owner_portal = models.BooleanField(
+        default=False,
+    )
+
+    has_tenant_portal = models.BooleanField(
+        default=True,
+    )
+
+    has_api_access = models.BooleanField(
+        default=False,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    sort_order = models.PositiveIntegerField(
+        default=0,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def __str__(self):
+        return self.name
+
+
+
+class OrganizationSubscription(models.Model):
+    STATUS_CHOICES = [
+        ("trial", "Trial"),
+        ("active", "Active"),
+        ("past_due", "Past Due"),
+        ("expired", "Expired"),
+        ("cancelled", "Cancelled"),
+        ("suspended", "Suspended"),
+    ]
+
+    BILLING_CYCLE_CHOICES = [
+        ("monthly", "Monthly"),
+        ("yearly", "Yearly"),
+    ]
+
+    organization = models.OneToOneField(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="subscription",
+    )
+
+    package = models.ForeignKey(
+        SubscriptionPackage,
+        on_delete=models.PROTECT,
+        related_name="subscriptions",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="trial",
+    )
+
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=BILLING_CYCLE_CHOICES,
+        default="monthly",
+    )
+
+    trial_start = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    trial_end = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    current_period_start = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    current_period_end = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    auto_renew = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def __str__(self):
+        return (
+            f"{self.organization.name} - "
+            f"{self.package.name}"
+        )
+
+    @property
+    def is_trial_active(self):
+        if (
+            self.status != "trial"
+            or not self.trial_end
+        ):
+            return False
+
+        return timezone.now() < self.trial_end
+
+    @property
+    def is_active_subscription(self):
+        if self.status == "trial":
+            return self.is_trial_active
+
+        if self.status != "active":
+            return False
+
+        if not self.current_period_end:
+            return False
+
+        return (
+            timezone.now()
+            < self.current_period_end
+        )
+
+    @property
+    def days_remaining(self):
+        end_date = None
+
+        if self.status == "trial":
+            end_date = self.trial_end
+
+        elif self.status == "active":
+            end_date = self.current_period_end
+
+        if not end_date:
+            return 0
+
+        remaining = (
+            end_date -
+            timezone.now()
+        )
+
+        return max(
+            remaining.days,
+            0,
+        )
+
+
+class SubscriptionPayment(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+        ("refunded", "Refunded"),
+    ]
+
+    PAYMENT_METHOD_CHOICES = [
+        ("mpesa", "M-Pesa"),
+        ("card", "Card"),
+        ("bank", "Bank Transfer"),
+        ("manual", "Manual"),
+        ("other", "Other"),
+    ]
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="subscription_payments",
+    )
+
+    subscription = models.ForeignKey(
+        OrganizationSubscription,
+        on_delete=models.CASCADE,
+        related_name="payments",
+    )
+
+    package = models.ForeignKey(
+        SubscriptionPackage,
+        on_delete=models.PROTECT,
+        related_name="payments",
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+    )
+
+    currency = models.CharField(
+        max_length=10,
+        default="KES",
+    )
+
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=OrganizationSubscription.BILLING_CYCLE_CHOICES,
+        default="monthly",
+    )
+
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PAYMENT_METHOD_CHOICES,
+    )
+
+    payment_reference = models.CharField(
+        max_length=150,
+        unique=True,
+        db_index=True,
+    )
+
+    external_reference = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+
+    period_start = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    period_end = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    paid_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def __str__(self):
+        return self.payment_reference
 
 
 

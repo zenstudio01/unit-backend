@@ -202,8 +202,7 @@ def tenant_notifications(request):
                 ),
 
                 "created_at":
-                    notification.created_at
-                    .isoformat(),
+                    notification.created_at.strftime("%B %d, %Y at %I:%M %p"),
             }
         )
 

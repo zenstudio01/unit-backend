@@ -1,4 +1,5 @@
 from .common_imports import *
+from .helper import *
 
 
 
@@ -228,6 +229,9 @@ def create_organization(request):
                     is_verified=False,
                 )
             )
+
+            # create organization subscription
+            create_trial_subscription(organization)
 
             # ------------------------------------------
             # Create organization owner role

@@ -23,6 +23,7 @@ from .api_views.tenant_notifications import *
 from .api_views.tenant_receipts import *
 from .api_views.tenant_maintenance import *
 from .api_views.kaskazi_integration import *
+from .api_views.owner_subscriptions import *
 
 
 
@@ -198,7 +199,13 @@ urlpatterns = [
     path("tenant/maintenance/create-options/", tenant_maintenance_create_options, name="tenant_maintenance_create_options"),
     path("tenant/maintenance/create/", tenant_create_maintenance, name="tenant_create_maintenance"),
 
-    # kaskazi integration
+
+    # owner_subscriptions
+    path("subscription/packages/", subscription_packages, name="subscription_packages"),
+    path("subscription/current/", current_subscription, name="current_subscription"),
+
+
+    # kaskazi integration -- keep this at the end
     path("integrations/kaskazi/services/", kaskazi_services, name="kaskazi_services"),
     path("prop/maintenance/<int:ticket_id>/kaskazi/", maintenance_kaskazi_booking, name="maintenance_kaskazi_booking"),
     path("prop/maintenance/<int:ticket_id>/kaskazi/book/", book_kaskazi_worker, name="book_kaskazi_worker"),
