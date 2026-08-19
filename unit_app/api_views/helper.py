@@ -43,4 +43,36 @@ def send_email(to_email, subject, html):
         email = resend.Emails.send(params)
         print(f"Email sent! ID: {email['id']}")
     except Exception as e:
-        print(f"Error sending email: {e}")       
+        print(f"Error sending email: {e}")    
+
+
+
+import cloudinary.uploader
+
+
+def upload_maintenance_image(
+    image_file,
+    organization_id,
+):
+    result = (
+        cloudinary.uploader.upload(
+            image_file,
+
+            folder=(
+                f"unit/"
+                f"organizations/"
+                f"{organization_id}/"
+                f"maintenance"
+            ),
+
+            resource_type=
+                "image",
+        )
+    )
+
+    return {
+        "url":
+            result.get(
+                "secure_url"
+            ),
+    }

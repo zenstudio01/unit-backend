@@ -2,6 +2,7 @@ from .auth import *
 from .profile import *
 from .organization import *
 from .finance import *
+from .prop_maintenance import *
 from .owner_profile import *
 from .team import *
 from .roles import *
@@ -33,7 +34,6 @@ from .payments import *
 from .client import *
 from .health import *
 from .chat import *
-from .maintenance import *
 from .announcements import *
 from .services import *
 

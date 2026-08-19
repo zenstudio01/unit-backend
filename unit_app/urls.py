@@ -6,6 +6,7 @@ from .api_views.organization import *
 from .api_views.dashboard import *
 from .api_views.properties import *
 from .api_views.finance import *
+from .api_views.prop_maintenance import *
 from .api_views.owner_dashboard import *
 from .api_views.portfolios import *
 from .api_views.reports import *
@@ -20,6 +21,7 @@ from .api_views.tenant_payment import *
 from .api_views.tenant_profile import *
 from .api_views.tenant_notifications import *
 from .api_views.tenant_receipts import *
+from .api_views.tenant_maintenance import *
 
 
 
@@ -41,7 +43,6 @@ from .api_views.payments import *
 from .api_views.client import *
 from .api_views.health import *
 from .api_views.chat import *
-from .api_views.maintenance import *
 from .api_views.announcements import *
 from .api_views.services import *
 from .api_views.roles import *
@@ -89,7 +90,11 @@ urlpatterns = [
     path("properties/owner/", get_owner_properties, name="get_owner_properties"),
 
     # maintenance
-    path("maintenance/", get_manager_maintenance_tickets, name="get_manager_maintenance_tickets"),
+    path("prop/maintenance/", get_manager_maintenance_tickets, name="get_manager_maintenance_tickets"),
+    path("prop/maintenance/<int:ticket_id>/", manager_maintenance_detail, name="manager_maintenance_detail"),
+    path("prop/maintenance/<int:ticket_id>/status/", manager_update_maintenance_status, name="manager_update_maintenance_status"),
+    path("prop/maintenance/<int:ticket_id>/assign/", manager_assign_maintenance, name="manager_assign_maintenance"),
+    path("prop/maintenance/<int:ticket_id>/comments/", manager_add_maintenance_comment, name="manager_add_maintenance_comment"),
 
     # finance
     path("finance/manager/", manager_finance_dashboard, name="manager_finance_dashboard"),
@@ -187,6 +192,10 @@ urlpatterns = [
     # tenant receipts
     path("tenant/receipts/", tenant_receipts, name="tenant_receipts"),
     path("tenant/receipts/<int:payment_id>/", tenant_receipt_detail, name="tenant_receipt_detail"),
+
+    # tenant maintenance
+    path("tenant/maintenance/create-options/", tenant_maintenance_create_options, name="tenant_maintenance_create_options"),
+    path("tenant/maintenance/create/", tenant_create_maintenance, name="tenant_create_maintenance"),
 
 
 

@@ -487,21 +487,16 @@ def manager_dashboard(request):
         # Property image
         # -------------------------------------------------
 
-        property_image = getattr(
-            property_obj,
-            "image",
-            None,
-        )
+        property_image = None
 
-        if property_image:
-            try:
-                property_image = (
-                    property_image.url
-                )
-            except Exception:
-                property_image = str(
-                    property_image
-                )
+        cover_image = (property_obj.images.filter(is_cover=True).first())
+        if cover_image:
+            property_image = cover_image.image_url
+        else:
+            # Fallback to first image if no cover was selected
+            first_image = (property_obj.images.order_by("created_at").first())
+            if first_image:
+                property_image = first_image.image_url
 
         property_data.append(
             {
