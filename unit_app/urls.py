@@ -19,6 +19,7 @@ from .api_views.property_structure import *
 from .api_views.tenant_payment import *
 from .api_views.tenant_profile import *
 from .api_views.tenant_notifications import *
+from .api_views.tenant_receipts import *
 
 
 
@@ -44,6 +45,7 @@ from .api_views.maintenance import *
 from .api_views.announcements import *
 from .api_views.services import *
 from .api_views.roles import *
+from .api_views.tenant_lease import *
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -177,6 +179,14 @@ urlpatterns = [
     path("tenant/notifications/", tenant_notifications, name="tenant_notifications"),
     path("tenant/notifications/<int:notification_id>/read/", tenant_notification_mark_read, name="tenant_notification_mark_read"),
     path("tenant/notifications/read-all/", tenant_notifications_mark_all_read, name="tenant_notifications_mark_all_read"),
+
+
+    # tenant lease
+    path("tenant/lease/", tenant_lease, name="tenant_lease"),
+
+    # tenant receipts
+    path("tenant/receipts/", tenant_receipts, name="tenant_receipts"),
+    path("tenant/receipts/<int:payment_id>/", tenant_receipt_detail, name="tenant_receipt_detail"),
 
 
 
