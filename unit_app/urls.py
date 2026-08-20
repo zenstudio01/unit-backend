@@ -24,6 +24,7 @@ from .api_views.tenant_receipts import *
 from .api_views.tenant_maintenance import *
 from .api_views.kaskazi_integration import *
 from .api_views.owner_subscriptions import *
+from .api_views.owner_subscription_payments import *
 
 
 
@@ -203,6 +204,12 @@ urlpatterns = [
     # owner_subscriptions
     path("subscription/packages/", subscription_packages, name="subscription_packages"),
     path("subscription/current/", current_subscription, name="current_subscription"),
+
+    # owner_subscriptions payment
+    path("subscription/paystack/initialize/", initialize_subscription_payment, name="initialize_subscription_payment"),
+    path("subscription/paystack/verify/<str:reference>/", verify_subscription_payment, name="verify_subscription_payment"),
+    path("subscription/paystack/callback/", subscription_paystack_callback, name="subscription_paystack_callback"),
+    path("subscription/payments/", subscription_payment_history, name="subscription_payment_history"),
 
 
     # kaskazi integration -- keep this at the end

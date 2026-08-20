@@ -2057,6 +2057,7 @@ class SubscriptionPayment(models.Model):
     ]
 
     PAYMENT_METHOD_CHOICES = [
+        ("paystack", "Paystack"),
         ("mpesa", "M-Pesa"),
         ("card", "Card"),
         ("bank", "Bank Transfer"),
