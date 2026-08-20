@@ -1,8 +1,6 @@
 from .common_imports import *
 
 
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def owner_statements(request):
@@ -61,10 +59,7 @@ def owner_statements(request):
             )
             .get(
                 user=user,
-
-                organization=
-                    organization,
-
+                organization=organization,
                 is_active=True,
             )
         )
@@ -92,8 +87,8 @@ def owner_statements(request):
     allowed_roles = {
         "organization_owner",
         "organization_admin",
-        "landlord",
-        "investor",
+        "accountant",
+        "property_manager",
     }
 
     if not role_codes.intersection(
@@ -102,7 +97,7 @@ def owner_statements(request):
         return JsonResponse(
             {
                 "message":
-                    "You do not have permission to view owner statements."
+                    "You do not have permission to view organization statements."
             },
             status=403,
         )
@@ -133,7 +128,11 @@ def owner_statements(request):
             status=400,
         )
 
-    if year < 2000 or year > 2200:
+    if (
+        year < 2000
+        or
+        year > 2200
+    ):
         return JsonResponse(
             {
                 "message":
@@ -143,79 +142,94 @@ def owner_statements(request):
         )
 
     # =====================================================
-    # OWNER RECORD
+    # ORGANIZATION PROPERTIES
     # =====================================================
 
-    try:
-        owner = (
-            Owner.objects.get(
-                user=user,
-
-                organization=
-                    organization,
-
-                status="active",
-            )
-        )
-
-    except Owner.DoesNotExist:
-        return JsonResponse(
-            {
-                "message":
-                    "No active owner profile is linked to this account."
-            },
-            status=404,
-        )
-
-    except Owner.MultipleObjectsReturned:
-        owner = (
-            Owner.objects
-            .filter(
-                user=user,
-
-                organization=
-                    organization,
-
-                status="active",
-            )
-            .first()
-        )
-
-    # =====================================================
-    # OWNED PROPERTIES
-    # =====================================================
-
-    ownerships = (
-        PropertyOwnership.objects
+    properties = (
+        Property.objects
         .filter(
-            owner=owner,
-            is_active=True,
+            organization=organization
         )
         .select_related(
-            "property",
-            "property__portifolio",
+            "portifolio"
+        )
+        .order_by(
+            "name"
         )
     )
 
-    if not ownerships.exists():
+    # =====================================================
+    # PROPERTY FILTER RESPONSE
+    # =====================================================
+
+    property_filters = []
+
+    for property_obj in properties:
+
+        portfolio = getattr(
+            property_obj,
+            "portifolio",
+            None,
+        )
+
+        property_filters.append(
+            {
+                "id":
+                    property_obj.id,
+
+                "name":
+                    property_obj.name,
+
+                "property_code":
+                    property_obj.property_code,
+
+                "portfolio": (
+                    {
+                        "id":
+                            portfolio.id,
+
+                        "name":
+                            portfolio.name,
+                    }
+                    if portfolio
+                    else None
+                ),
+            }
+        )
+
+    # =====================================================
+    # EMPTY ORGANIZATION
+    # =====================================================
+
+    if not properties.exists():
         return JsonResponse(
             {
-                "owner": {
+                "organization": {
                     "id":
-                        owner.id,
+                        organization.id,
 
                     "name":
-                        owner.name,
+                        organization.name,
                 },
 
+                "year":
+                    year,
+
                 "summary": {
-                    "gross_collected": 0,
-                    "owner_share": 0,
-                    "maintenance_costs": 0,
-                    "owner_maintenance_share": 0,
-                    "net_income": 0,
-                    "outstanding": 0,
-                    "properties": 0,
+                    "gross_collected":
+                        0,
+
+                    "maintenance_costs":
+                        0,
+
+                    "net_income":
+                        0,
+
+                    "outstanding":
+                        0,
+
+                    "properties":
+                        0,
                 },
 
                 "properties": [],
@@ -226,44 +240,6 @@ def owner_statements(request):
         )
 
     # =====================================================
-    # PROPERTY RESPONSE
-    # =====================================================
-
-    property_filters = []
-
-    for ownership in ownerships:
-        property_filters.append(
-            {
-                "id":
-                    ownership.property.id,
-
-                "name":
-                    ownership.property.name,
-
-                "property_code":
-                    ownership.property.property_code,
-
-                "ownership_percentage":
-                    float(
-                        ownership
-                        .ownership_percentage
-                    ),
-
-                "portfolio": {
-                    "id":
-                        ownership
-                        .property
-                        .portifolio.id,
-
-                    "name":
-                        ownership
-                        .property
-                        .portifolio.name,
-                },
-            }
-        )
-
-    # =====================================================
     # YEAR TOTALS
     # =====================================================
 
@@ -271,15 +247,7 @@ def owner_statements(request):
         Decimal("0.00")
     )
 
-    year_owner_share = (
-        Decimal("0.00")
-    )
-
     year_maintenance = (
-        Decimal("0.00")
-    )
-
-    year_owner_maintenance = (
         Decimal("0.00")
     )
 
@@ -289,6 +257,10 @@ def owner_statements(request):
 
     statements = []
 
+    today = (
+        timezone.localdate()
+    )
+
     # =====================================================
     # EACH MONTH
     # =====================================================
@@ -297,6 +269,19 @@ def owner_statements(request):
         1,
         13,
     ):
+
+        # Skip future months
+        if (
+            year > today.year
+            or
+            (
+                year == today.year
+                and
+                month > today.month
+            )
+        ):
+            continue
+
         start_date = date(
             year,
             month,
@@ -321,15 +306,7 @@ def owner_statements(request):
             Decimal("0.00")
         )
 
-        month_owner_share = (
-            Decimal("0.00")
-        )
-
         month_maintenance = (
-            Decimal("0.00")
-        )
-
-        month_owner_maintenance = (
             Decimal("0.00")
         )
 
@@ -340,28 +317,10 @@ def owner_statements(request):
         statement_properties = []
 
         # =================================================
-        # EACH OWNED PROPERTY
+        # EACH ORGANIZATION PROPERTY
         # =================================================
 
-        for ownership in ownerships:
-
-            property_obj = (
-                ownership.property
-            )
-
-            ownership_percentage = (
-                Decimal(
-                    str(
-                        ownership
-                        .ownership_percentage
-                    )
-                )
-            )
-
-            ownership_ratio = (
-                ownership_percentage
-                / Decimal("100")
-            )
+        for property_obj in properties:
 
             # =============================================
             # RENT INVOICES
@@ -392,6 +351,10 @@ def owner_statements(request):
                     ]
                 )
             )
+
+            # =============================================
+            # OUTSTANDING RENT
+            # =============================================
 
             property_outstanding = (
                 invoices
@@ -439,13 +402,8 @@ def owner_statements(request):
                 or Decimal("0.00")
             )
 
-            property_owner_share = (
-                property_collected
-                * ownership_ratio
-            )
-
             # =============================================
-            # MAINTENANCE COSTS
+            # MAINTENANCE COST
             # =============================================
 
             property_maintenance = (
@@ -457,7 +415,8 @@ def owner_statements(request):
                     property=
                         property_obj,
 
-                    actual_cost__isnull=False,
+                    actual_cost__isnull=
+                        False,
 
                     completed_at__date__gte=
                         start_date,
@@ -476,34 +435,30 @@ def owner_statements(request):
                 or Decimal("0.00")
             )
 
-            property_owner_maintenance = (
+            # =============================================
+            # NET PROPERTY INCOME
+            # =============================================
+
+            property_net_income = (
+                property_collected
+                -
                 property_maintenance
-                * ownership_ratio
             )
 
             # =============================================
-            # ADD TO MONTH
+            # MONTH TOTALS
             # =============================================
 
             month_gross += (
                 property_collected
             )
 
-            month_owner_share += (
-                property_owner_share
-            )
-
             month_maintenance += (
                 property_maintenance
             )
 
-            month_owner_maintenance += (
-                property_owner_maintenance
-            )
-
             month_outstanding += (
                 property_outstanding
-                * ownership_ratio
             )
 
             # =============================================
@@ -529,19 +484,9 @@ def owner_statements(request):
                             property_obj
                             .property_code,
 
-                        "ownership_percentage":
-                            float(
-                                ownership_percentage
-                            ),
-
                         "gross_collected":
                             float(
                                 property_collected
-                            ),
-
-                        "owner_share":
-                            float(
-                                property_owner_share
                             ),
 
                         "maintenance_cost":
@@ -549,22 +494,14 @@ def owner_statements(request):
                                 property_maintenance
                             ),
 
-                        "owner_maintenance_share":
-                            float(
-                                property_owner_maintenance
-                            ),
-
                         "outstanding":
                             float(
                                 property_outstanding
-                                * ownership_ratio
                             ),
 
                         "net_income":
                             float(
-                                property_owner_share
-                                -
-                                property_owner_maintenance
+                                property_net_income
                             ),
                     }
                 )
@@ -574,50 +511,21 @@ def owner_statements(request):
         # =================================================
 
         month_net_income = (
-            month_owner_share
+            month_gross
             -
-            month_owner_maintenance
+            month_maintenance
         )
 
         # =================================================
-        # DO NOT SEND FUTURE MONTHS
-        # =================================================
-
-        today = (
-            timezone.localdate()
-        )
-
-        is_future_month = (
-            year > today.year
-            or
-            (
-                year == today.year
-                and
-                month > today.month
-            )
-        )
-
-        if is_future_month:
-            continue
-
-        # =================================================
-        # ADD YEAR TOTALS
+        # YEAR TOTALS
         # =================================================
 
         year_gross_collected += (
             month_gross
         )
 
-        year_owner_share += (
-            month_owner_share
-        )
-
         year_maintenance += (
             month_maintenance
-        )
-
-        year_owner_maintenance += (
-            month_owner_maintenance
         )
 
         year_outstanding += (
@@ -625,7 +533,7 @@ def owner_statements(request):
         )
 
         # =================================================
-        # STATEMENT
+        # MONTH STATEMENT
         # =================================================
 
         statements.append(
@@ -654,19 +562,9 @@ def owner_statements(request):
                         month_gross
                     ),
 
-                "owner_share":
-                    float(
-                        month_owner_share
-                    ),
-
                 "maintenance_costs":
                     float(
                         month_maintenance
-                    ),
-
-                "owner_maintenance_share":
-                    float(
-                        month_owner_maintenance
                     ),
 
                 "outstanding":
@@ -701,20 +599,6 @@ def owner_statements(request):
 
     return JsonResponse(
         {
-            "owner": {
-                "id":
-                    owner.id,
-
-                "name":
-                    owner.name,
-
-                "owner_type":
-                    owner.owner_type,
-
-                "email":
-                    owner.email,
-            },
-
             "organization": {
                 "id":
                     organization.id,
@@ -732,26 +616,16 @@ def owner_statements(request):
                         year_gross_collected
                     ),
 
-                "owner_share":
-                    float(
-                        year_owner_share
-                    ),
-
                 "maintenance_costs":
                     float(
                         year_maintenance
                     ),
 
-                "owner_maintenance_share":
-                    float(
-                        year_owner_maintenance
-                    ),
-
                 "net_income":
                     float(
-                        year_owner_share
+                        year_gross_collected
                         -
-                        year_owner_maintenance
+                        year_maintenance
                     ),
 
                 "outstanding":
@@ -760,7 +634,7 @@ def owner_statements(request):
                     ),
 
                 "properties":
-                    ownerships.count(),
+                    properties.count(),
             },
 
             "properties":

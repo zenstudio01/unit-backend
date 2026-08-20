@@ -1,4 +1,5 @@
 from .common_imports import *
+import os
 
 
 def get_subscription_manager(
@@ -85,6 +86,8 @@ def get_subscription_manager(
     )
 
 
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY")
+PAYSTACK_CALLBACK_URL = os.environ.get("PAYSTACK_CALLBACK_URL")
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -310,16 +313,13 @@ def initialize_subscription_payment(
 
     headers = {
         "Authorization":
-            f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            f"Bearer {PAYSTACK_SECRET_KEY}",
 
         "Content-Type":
             "application/json",
     }
 
-    callback_url = (
-        f"{settings.UNIT_BACKEND_URL}"
-        f"/api/v1/subscription/paystack/callback/"
-    )
+    callback_url = PAYSTACK_CALLBACK_URL
 
     payload = {
         "email":
@@ -719,7 +719,7 @@ def verify_subscription_payment(
 
     headers = {
         "Authorization":
-            f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            f"Bearer {PAYSTACK_SECRET_KEY}",
     }
 
     try:
@@ -924,7 +924,7 @@ def subscription_paystack_callback(
 
     headers = {
         "Authorization":
-            f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            f"Bearer {PAYSTACK_SECRET_KEY}",
     }
 
     try:
