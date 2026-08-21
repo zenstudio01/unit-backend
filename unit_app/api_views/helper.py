@@ -5,7 +5,9 @@ import cloudinary.uploader
 from datetime import timedelta
 from django.utils import timezone
 
-from unit_app.models import SubscriptionPackage, OrganizationSubscription
+from unit_app.models import SubscriptionPackage, OrganizationSubscription, Organization, OrganizationMembership
+from django.http import JsonResponse
+
 
 
 # send push notification to phne
@@ -129,4 +131,92 @@ def create_trial_subscription(
                     days=30
                 ),
         )
+    )
+
+
+
+
+
+def get_manager_organization(
+    user,
+    organization_id,
+):
+    try:
+        organization = (
+            Organization.objects.get(
+                id=organization_id
+            )
+        )
+
+    except Organization.DoesNotExist:
+        return (
+            None,
+            JsonResponse(
+                {
+                    "message":
+                        "Organization not found."
+                },
+                status=404,
+            ),
+        )
+
+    try:
+        membership = (
+            OrganizationMembership.objects
+            .prefetch_related(
+                "roles"
+            )
+            .get(
+                user=user,
+                organization=organization,
+                is_active=True,
+            )
+        )
+
+    except OrganizationMembership.DoesNotExist:
+        return (
+            None,
+            JsonResponse(
+                {
+                    "message":
+                        "You do not have access to this organization."
+                },
+                status=403,
+            ),
+        )
+
+    role_codes = set(
+        membership.roles
+        .filter(
+            is_active=True
+        )
+        .values_list(
+            "code",
+            flat=True,
+        )
+    )
+
+    allowed_roles = {
+        "organization_owner",
+        "organization_admin",
+        "property_manager",
+    }
+
+    if not role_codes.intersection(
+        allowed_roles
+    ):
+        return (
+            None,
+            JsonResponse(
+                {
+                    "message":
+                        "You do not have permission to manage this organization."
+                },
+                status=403,
+            ),
+        )
+
+    return (
+        organization,
+        None,
     )

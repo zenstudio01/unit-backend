@@ -40,6 +40,50 @@ class KaskaziService:
 
         return response.json()
 
+    def _handle_response(self, response):
+        print("KASKAZI STATUS:",response.status_code)
+        print("KASKAZI RESPONSE:", response.text)
+
+        try:
+            data = (response.json())
+
+        except Exception:
+            data = {"message": response.text}
+
+        if not response.ok:
+            raise Exception(
+            data.get("error") or data.get("message") or f"Kaskazi returned HTTP {response.status_code}")
+
+        return data
+
+        
+    def get_applications(self,booking_id):
+        response = requests.get(f"{self.base_url}/integrations/unit/bookings/{booking_id}/applications/", headers=self.headers, timeout=30)
+
+        return self._handle_response(response)
+
+    def get_messages(self, booking_id):
+        response = requests.get(f"{self.base_url}/integrations/unit/bookings/{booking_id}/messages/", headers=self.headers, timeout=30)
+
+        return self._handle_response(response)
+
+
+    def send_message(self, booking_id, text,):
+        response = requests.post(f"{self.base_url}/integrations/unit/bookings/{booking_id}/messages/send/", headers=self.headers, json={"text": text},timeout=30,)
+
+        return self._handle_response(response)
+
+
+    def verify_worker(self, booking_id, qr_value):
+        response = requests.post(f"{self.base_url}/integrations/unit/bookings/{booking_id}/verify-worker/",headers=self.headers,json={"qr_value":qr_value,},timeout=30,)
+
+        return self._handle_response(response)
+
+    def select_worker(self, booking_id, application_id,):
+        response = requests.post((f"{self.base_url}" f"/integrations/unit/bookings/" f"{booking_id}/select-worker/"),headers=self.headers, json={"application_id":application_id,},timeout=30,)
+
+        return self._handle_response(response)
+
     def create_booking(
         self,
         payload,

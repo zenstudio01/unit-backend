@@ -25,6 +25,9 @@ from .api_views.tenant_maintenance import *
 from .api_views.kaskazi_integration import *
 from .api_views.owner_subscriptions import *
 from .api_views.owner_subscription_payments import *
+from .api_views.prop_messages import *
+from .api_views.prop_worker_verification import *
+from .api_views.select_worker import *
 
 
 
@@ -216,6 +219,17 @@ urlpatterns = [
     path("integrations/kaskazi/services/", kaskazi_services, name="kaskazi_services"),
     path("prop/maintenance/<int:ticket_id>/kaskazi/", maintenance_kaskazi_booking, name="maintenance_kaskazi_booking"),
     path("prop/maintenance/<int:ticket_id>/kaskazi/book/", book_kaskazi_worker, name="book_kaskazi_worker"),
+    path("prop/maintenance/<int:ticket_id>/kaskazi/applications/", maintenance_kaskazi_applications, name="maintenance_kaskazi_applications"),
+
+    # prop messages
+    path("prop/maintenance/<int:ticket_id>/kaskazi/messages/", maintenance_kaskazi_messages, name="maintenance_kaskazi_messages"),
+    path("prop/maintenance/<int:ticket_id>/kaskazi/messages/send/", maintenance_kaskazi_send_message, name="maintenance_kaskazi_send_message"),
+
+    # prop worker verification
+    path("prop/maintenance/<int:ticket_id>/kaskazi/verify_worker/", maintenance_kaskazi_verify_worker, name="maintenance_kaskazi_verify_worker"),
+
+    # prop select worker
+    path("prop/maintenance/<int:ticket_id>/kaskazi/select_worker/", maintenance_kaskazi_select_worker, name="maintenance_kaskazi_select_worker"),
 
 
 

@@ -166,6 +166,10 @@ def book_kaskazi_worker(
     request,
     ticket_id,
 ):
+    # =====================================================
+    # REQUEST DATA
+    # =====================================================
+
     organization_id = (
         request.data.get(
             "organization_id"
@@ -180,11 +184,27 @@ def book_kaskazi_worker(
         or ""
     ).strip()
 
-    preferred_date = (
+    budget_raw = (
         request.data.get(
-            "preferred_date"
+            "budget"
         )
     )
+
+    scheduled_date = str(
+        request.data.get(
+            "scheduled_date",
+            ""
+        )
+        or ""
+    ).strip()
+
+    scheduled_time = str(
+        request.data.get(
+            "scheduled_time",
+            ""
+        )
+        or ""
+    ).strip()
 
     notes = str(
         request.data.get(
@@ -193,6 +213,10 @@ def book_kaskazi_worker(
         )
         or ""
     ).strip()
+
+    # =====================================================
+    # VALIDATION
+    # =====================================================
 
     if not organization_id:
         return JsonResponse(
@@ -212,6 +236,113 @@ def book_kaskazi_worker(
             status=400,
         )
 
+    if budget_raw in [
+        None,
+        "",
+    ]:
+        return JsonResponse(
+            {
+                "message":
+                    "budget is required."
+            },
+            status=400,
+        )
+
+    try:
+        budget = Decimal(
+            str(
+                budget_raw
+            )
+        )
+
+        if budget <= 0:
+            raise ValueError()
+
+    except Exception:
+        return JsonResponse(
+            {
+                "message":
+                    "Enter a valid budget greater than zero."
+            },
+            status=400,
+        )
+
+    if not scheduled_date:
+        return JsonResponse(
+            {
+                "message":
+                    "scheduled_date is required."
+            },
+            status=400,
+        )
+
+    parsed_date = (
+        parse_date(
+            scheduled_date
+        )
+    )
+
+    if not parsed_date:
+        return JsonResponse(
+            {
+                "message":
+                    "scheduled_date must use YYYY-MM-DD."
+            },
+            status=400,
+        )
+
+    if not scheduled_time:
+        return JsonResponse(
+            {
+                "message":
+                    "scheduled_time is required."
+            },
+            status=400,
+        )
+
+    parsed_time = (
+        parse_time(
+            scheduled_time
+        )
+    )
+
+    if not parsed_time:
+        return JsonResponse(
+            {
+                "message":
+                    "scheduled_time must use HH:MM."
+            },
+            status=400,
+        )
+
+    # Optional but recommended:
+    # prevent booking jobs in the past.
+
+    scheduled_datetime = (
+        timezone.make_aware(
+            datetime.combine(
+                parsed_date,
+                parsed_time,
+            )
+        )
+    )
+
+    if (
+        scheduled_datetime <
+        timezone.now()
+    ):
+        return JsonResponse(
+            {
+                "message":
+                    "Scheduled date and time cannot be in the past."
+            },
+            status=400,
+        )
+
+    # =====================================================
+    # ORGANIZATION ACCESS
+    # =====================================================
+
     (
         organization,
         error_response,
@@ -222,6 +353,10 @@ def book_kaskazi_worker(
 
     if error_response:
         return error_response
+
+    # =====================================================
+    # MAINTENANCE TICKET
+    # =====================================================
 
     try:
         ticket = (
@@ -246,33 +381,155 @@ def book_kaskazi_worker(
             status=404,
         )
 
-    if hasattr(
-        ticket,
-        "kaskazi_booking"
-    ):
+    # =====================================================
+    # PREVENT DUPLICATE KASKAZI BOOKING
+    # =====================================================
+
+    try:
+        existing_booking = (
+            ticket.kaskazi_booking
+        )
+
+    except KaskaziMaintenanceBooking.DoesNotExist:
+        existing_booking = None
+
+    if existing_booking:
         return JsonResponse(
             {
                 "message":
-                    "This maintenance request already has a Kaskazi booking."
+                    "This maintenance request already has a Kaskazi booking.",
+
+                "booking": {
+                    "id":
+                        existing_booking.id,
+
+                    "external_booking_id":
+                        existing_booking
+                        .external_booking_id,
+
+                    "status":
+                        existing_booking.status,
+                },
             },
             status=400,
         )
 
+    # =====================================================
+    # PROPERTY DETAILS
+    # =====================================================
+
     property_obj = (
         ticket.property
-    )
-
-    unit = (
-        ticket.unit
     )
 
     building = (
         ticket.building
     )
 
+    unit = (
+        ticket.unit
+    )
+
+    # =====================================================
+    # LOCATION STRING
+    #
+    # Kaskazi Job.location is a text/string field,
+    # so do NOT send an object here.
+    # =====================================================
+
+    location_parts = []
+
+    # Use actual property address/location first
+    # if your Property model has one.
+
+    property_address = (
+        getattr(
+            property_obj,
+            "address",
+            None
+        )
+        or
+        getattr(
+            property_obj,
+            "location",
+            None
+        )
+    )
+
+    if property_address:
+        location_parts.append(
+            str(
+                property_address
+            ).strip()
+        )
+
+    elif property_obj.name:
+        location_parts.append(
+            property_obj.name
+        )
+
+    if building:
+        location_parts.append(
+            building.name
+        )
+
+    if unit:
+        location_parts.append(
+            unit.name
+        )
+
+    property_location = (
+        ", ".join(
+            [
+                part
+                for part
+                in location_parts
+                if part
+            ]
+        )
+    )
+
+    if not property_location:
+        return JsonResponse(
+            {
+                "message":
+                    "This property does not have a valid location."
+            },
+            status=400,
+        )
+
+    # =====================================================
+    # COORDINATES
+    # =====================================================
+
+    latitude = (
+        getattr(
+            property_obj,
+            "latitude",
+            None
+        )
+    )
+
+    longitude = (
+        getattr(
+            property_obj,
+            "longitude",
+            None
+        )
+    )
+
+    # =====================================================
+    # KASKAZI PAYLOAD
+    # =====================================================
+
     payload = {
         "external_reference":
             ticket.ticket_number,
+
+        "ticket_id":
+            str(
+                ticket.id
+            ),
 
         "service_code":
             service_code,
@@ -289,53 +546,112 @@ def book_kaskazi_worker(
         "priority":
             ticket.priority,
 
-        "preferred_date":
-            preferred_date
-            or (
-                str(
-                    ticket.preferred_date
-                )
-                if ticket.preferred_date
-                else None
+        "budget":
+            str(
+                budget
             ),
 
-        "notes":
-            notes,
+        "scheduled_date":
+            scheduled_date,
 
-        "customer": {
-            "organization_id":
+        "scheduled_time":
+            scheduled_time,
+
+        "location":
+            property_location,
+
+        "latitude": (
+            str(
+                latitude
+            )
+            if latitude
+            is not None
+            else None
+        ),
+
+        "longitude": (
+            str(
+                longitude
+            )
+            if longitude
+            is not None
+            else None
+        ),
+
+        "organization": {
+            "id":
                 organization.id,
 
-            "organization_name":
+            "name":
                 organization.name,
         },
 
-        "location": {
-            "property_id":
+        "property": {
+            "id":
                 property_obj.id,
 
-            "property_name":
+            "name":
                 property_obj.name,
-
-            "building": (
-                building.name
-                if building
-                else None
-            ),
-
-            "unit": (
-                unit.name
-                if unit
-                else None
-            ),
-
-            "unit_code": (
-                unit.unit_code
-                if unit
-                else None
-            ),
         },
+
+        # Optional additional information.
+        # Kaskazi can ignore this if its
+        # endpoint does not use it yet.
+
+        "building": (
+            {
+                "id":
+                    building.id,
+
+                "name":
+                    building.name,
+            }
+            if building
+            else None
+        ),
+
+        "unit": (
+            {
+                "id":
+                    unit.id,
+
+                "name":
+                    unit.name,
+
+                "unit_code":
+                    getattr(
+                        unit,
+                        "unit_code",
+                        None
+                    ),
+            }
+            if unit
+            else None
+        ),
+
+        "notes":
+            notes,
     }
+
+    print(
+        "======================================"
+    )
+
+    print(
+        "UNIT -> KASKAZI PAYLOAD:"
+    )
+
+    print(
+        payload
+    )
+
+    print(
+        "======================================"
+    )
+
+    # =====================================================
+    # CREATE KASKAZI BOOKING
+    # =====================================================
 
     try:
         kaskazi = (
@@ -349,33 +665,56 @@ def book_kaskazi_worker(
         )
 
     except Exception as error:
+
         print(
             "KASKAZI BOOKING ERROR:",
-            error
+            repr(
+                error
+            )
         )
 
         return JsonResponse(
             {
                 "message":
+                    str(error)
+                    or
                     "Unable to create booking on Kaskazi."
             },
             status=502,
         )
+
+    # =====================================================
+    # KASKAZI RESPONSE
+    # =====================================================
 
     booking_data = (
         result.get(
             "booking",
             result,
         )
+        or {}
     )
 
+    print(
+        "KASKAZI BOOKING RESPONSE:",
+        booking_data
+    )
+
+    # =====================================================
+    # EXTERNAL BOOKING ID
+    # =====================================================
+
     external_booking_id = (
+        booking_data.get(
+            "booking_id"
+        )
+        or
         booking_data.get(
             "id"
         )
         or
         booking_data.get(
-            "booking_id"
+            "job_id"
         )
     )
 
@@ -383,10 +722,160 @@ def book_kaskazi_worker(
         return JsonResponse(
             {
                 "message":
-                    "Kaskazi did not return a booking ID."
+                    "Kaskazi created the job but did not return a booking ID.",
+
+                "kaskazi_response":
+                    booking_data,
             },
             status=502,
         )
+
+    # =====================================================
+    # WORKER DATA
+    # =====================================================
+
+    worker_data = (
+        booking_data.get(
+            "worker"
+        )
+        or {}
+    )
+
+    external_worker_id = (
+        worker_data.get(
+            "id"
+        )
+        or
+        booking_data.get(
+            "worker_id"
+        )
+    )
+
+    worker_name = (
+        worker_data.get(
+            "name"
+        )
+        or
+        booking_data.get(
+            "worker_name"
+        )
+    )
+
+    worker_phone = (
+        worker_data.get(
+            "phone_number"
+        )
+        or
+        worker_data.get(
+            "phone"
+        )
+        or
+        booking_data.get(
+            "worker_phone"
+        )
+    )
+
+    # =====================================================
+    # SCHEDULE
+    # =====================================================
+
+    scheduled_at = (
+        booking_data.get(
+            "scheduled_at"
+        )
+    )
+
+    # Kaskazi may return separate
+    # scheduled_date/scheduled_time instead.
+
+    if not scheduled_at:
+
+        response_date = (
+            booking_data.get(
+                "scheduled_date"
+            )
+        )
+
+        response_time = (
+            booking_data.get(
+                "scheduled_time"
+            )
+        )
+
+        if (
+            response_date
+            and
+            response_time
+        ):
+            try:
+                parsed_response_date = (
+                    parse_date(
+                        str(
+                            response_date
+                        )
+                    )
+                )
+
+                parsed_response_time = (
+                    parse_time(
+                        str(
+                            response_time
+                        )
+                )
+
+                )
+
+                if (
+                    parsed_response_date
+                    and
+                    parsed_response_time
+                ):
+                    scheduled_at = (
+                        timezone.make_aware(
+                            datetime.combine(
+                                parsed_response_date,
+                                parsed_response_time,
+                            )
+                        )
+                    )
+
+            except Exception:
+                scheduled_at = None
+
+    # =====================================================
+    # PRICE
+    # =====================================================
+
+    quoted_amount = (
+        booking_data.get(
+            "quoted_amount"
+        )
+        or
+        booking_data.get(
+            "budget"
+        )
+    )
+
+    # =====================================================
+    # SERVICE NAME
+    # =====================================================
+
+    service_name = (
+        booking_data.get(
+            "service_name"
+        )
+        or
+        service_code
+        .replace(
+            "_",
+            " "
+        )
+        .title()
+    )
+
+    # =====================================================
+    # SAVE UNIT INTEGRATION RECORD
+    # =====================================================
 
     try:
         with transaction.atomic():
@@ -400,46 +889,42 @@ def book_kaskazi_worker(
                         organization,
 
                     external_booking_id=
-                        external_booking_id,
-
-                    external_worker_id=
-                        booking_data.get(
-                            "worker_id"
+                        str(
+                            external_booking_id
                         ),
+
+                    external_worker_id=(
+                        str(
+                            external_worker_id
+                        )
+                        if external_worker_id
+                        is not None
+                        else None
+                    ),
 
                     worker_name=
-                        booking_data.get(
-                            "worker_name"
-                        ),
+                        worker_name,
 
                     worker_phone=
-                        booking_data.get(
-                            "worker_phone"
-                        ),
+                        worker_phone,
 
                     service_code=
                         service_code,
 
                     service_name=
-                        booking_data.get(
-                            "service_name"
-                        ),
+                        service_name,
 
                     status=
                         booking_data.get(
                             "status",
-                            "requested",
+                            "pending",
                         ),
 
                     scheduled_at=
-                        booking_data.get(
-                            "scheduled_at"
-                        ),
+                        scheduled_at,
 
                     quoted_amount=
-                        booking_data.get(
-                            "quoted_amount"
-                        ),
+                        quoted_amount,
 
                     external_reference=
                         ticket.ticket_number,
@@ -448,6 +933,10 @@ def book_kaskazi_worker(
                         booking_data,
                 )
             )
+
+            # =================================================
+            # UPDATE UNIT MAINTENANCE STATUS
+            # =================================================
 
             previous_status = (
                 ticket.status
@@ -464,6 +953,10 @@ def book_kaskazi_worker(
                 ]
             )
 
+            # =================================================
+            # STATUS HISTORY
+            # =================================================
+
             MaintenanceStatusHistory.objects.create(
                 maintenance_ticket=
                     ticket,
@@ -478,10 +971,16 @@ def book_kaskazi_worker(
                     request.user,
 
                 notes=(
-                    "Maintenance request submitted to Kaskazi. "
-                    f"Booking reference: {external_booking_id}"
+                    "Maintenance request submitted "
+                    "to Kaskazi. "
+                    f"Booking reference: "
+                    f"{external_booking_id}"
                 ),
             )
+
+        # =====================================================
+        # RESPONSE
+        # =====================================================
 
         return JsonResponse(
             {
@@ -494,6 +993,9 @@ def book_kaskazi_worker(
 
                     "external_booking_id":
                         booking.external_booking_id,
+
+                    "external_reference":
+                        booking.external_reference,
 
                     "status":
                         booking.status,
@@ -531,18 +1033,31 @@ def book_kaskazi_worker(
         )
 
     except Exception as error:
+
         print(
             "SAVE KASKAZI BOOKING ERROR:",
-            error
+            repr(
+                error
+            )
         )
 
         return JsonResponse(
             {
                 "message":
-                    "Kaskazi created the booking but UNIT could not save it.",
+                    (
+                        "Kaskazi created the booking "
+                        "but UNIT could not save it."
+                    ),
 
                 "external_booking_id":
-                    external_booking_id,
+                    str(
+                        external_booking_id
+                    ),
+
+                "error":
+                    str(
+                        error
+                    ),
             },
             status=500,
         )
@@ -668,6 +1183,120 @@ def maintenance_kaskazi_booking(
                     else None
                 ),
             },
+        },
+        status=200,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def maintenance_kaskazi_applications(
+    request,
+    ticket_id,
+):
+    organization_id = (
+        request.GET.get(
+            "organization_id"
+        )
+    )
+
+    if not organization_id:
+        return JsonResponse(
+            {
+                "message":
+                    "organization_id is required."
+            },
+            status=400,
+        )
+
+    (
+        organization,
+        error_response,
+    ) = get_manager_organization(
+        request.user,
+        organization_id,
+    )
+
+    if error_response:
+        return error_response
+
+    try:
+        ticket = (
+            MaintenanceTicket.objects
+            .select_related(
+                "organization"
+            )
+            .get(
+                id=ticket_id,
+                organization=organization,
+            )
+        )
+
+    except MaintenanceTicket.DoesNotExist:
+        return JsonResponse(
+            {
+                "message":
+                    "Maintenance request not found."
+            },
+            status=404,
+        )
+
+    try:
+        booking = (
+            KaskaziMaintenanceBooking.objects.get(
+                maintenance_ticket=ticket
+            )
+        )
+
+    except KaskaziMaintenanceBooking.DoesNotExist:
+        return JsonResponse(
+            {
+                "message":
+                    "This maintenance request has not been sent to Kaskazi."
+            },
+            status=404,
+        )
+
+    try:
+        kaskazi = (
+            KaskaziService()
+        )
+
+        result = (
+            kaskazi.get_applications(
+                booking.external_booking_id
+            )
+        )
+
+    except Exception as error:
+        print(
+            "KASKAZI APPLICATIONS ERROR:",
+            repr(error)
+        )
+
+        return JsonResponse(
+            {
+                "message":
+                    str(error)
+                    or
+                    "Unable to load Kaskazi worker applications."
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "count":
+                result.get(
+                    "count",
+                    0
+                ),
+
+            "applications":
+                result.get(
+                    "applications",
+                    []
+                ),
         },
         status=200,
     )
