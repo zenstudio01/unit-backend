@@ -550,6 +550,8 @@ def create_portfolio(request):
         or ""
     ).strip()
 
+    print(f"Organization Id: {organization_id}, Name: {name}, Code: {code}, Description: {description}")
+
     # =====================================================
     # VALIDATION
     # =====================================================
@@ -572,6 +574,7 @@ def create_portfolio(request):
         )
 
     if missing_fields:
+        print(f"Missing fields....{missing_fields}")
         return JsonResponse(
             {
                 "message":
@@ -584,6 +587,7 @@ def create_portfolio(request):
         )
 
     if len(name) < 2:
+        print("Portfolio name is too short.")
         return JsonResponse(
             {
                 "message":
@@ -593,6 +597,7 @@ def create_portfolio(request):
         )
 
     if len(code) < 2:
+        print("Portfolio code is too short.")
         return JsonResponse(
             {
                 "message":
@@ -700,6 +705,7 @@ def create_portfolio(request):
     )
 
     if name_exists:
+        print("A portfolio with this name already exists.")
         return JsonResponse(
             {
                 "message":
@@ -725,6 +731,7 @@ def create_portfolio(request):
     )
 
     if code_exists:
+        print("A portfolio with this code already exists.")
         return JsonResponse(
             {
                 "message":

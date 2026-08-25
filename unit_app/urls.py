@@ -28,6 +28,7 @@ from .api_views.owner_subscription_payments import *
 from .api_views.prop_messages import *
 from .api_views.prop_worker_verification import *
 from .api_views.select_worker import *
+from .api_views.record_manual_payment import *
 
 
 
@@ -230,6 +231,10 @@ urlpatterns = [
 
     # prop select worker
     path("prop/maintenance/<int:ticket_id>/kaskazi/select_worker/", maintenance_kaskazi_select_worker, name="maintenance_kaskazi_select_worker"),
+
+
+    # record manual payment
+    path("payments/manual/", record_manual_payment, name="record_manual_payment"),
 
 
 

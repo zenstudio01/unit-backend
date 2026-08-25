@@ -1001,7 +1001,7 @@ def create_and_assign_tenant(request):
         # =====================================================
 
         activation_link = (
-            "http://192.168.100.12:8000"
+            "http://192.168.100.12:8000/api/v1"
             "/tenant/activate/"
             f"?token={activation_token}"
         )
