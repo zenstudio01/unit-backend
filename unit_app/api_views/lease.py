@@ -2904,14 +2904,9 @@ def lease_payment_invoices(
     membership_exists = (
         OrganizationMembership.objects
         .filter(
-            organization=
-                organization,
-
-            user=
-                user,
-
-            is_active=
-                True,
+            organization=organization,
+            user=user,
+            is_active=True,
         )
         .exists()
     )
@@ -2937,11 +2932,8 @@ def lease_payment_invoices(
                 "unit__property",
             )
             .get(
-                id=
-                    lease_id,
-
-                organization=
-                    organization,
+                id=lease_id,
+                organization=organization,
             )
         )
 
@@ -2955,17 +2947,14 @@ def lease_payment_invoices(
         )
 
     # =====================================================
-    # TENANT
+    # PRIMARY TENANT
     # =====================================================
 
     primary_link = (
         LeaseTenant.objects
         .filter(
-            lease=
-                lease,
-
-            left_at__isnull=
-                True,
+            lease=lease,
+            left_at__isnull=True,
         )
         .select_related(
             "tenant"
@@ -2990,20 +2979,16 @@ def lease_payment_invoices(
     )
 
     # =====================================================
-    # INVOICES
+    # PAYABLE INVOICES
     # =====================================================
 
     invoices_queryset = (
         Invoice.objects
         .filter(
-            organization=
-                organization,
-
-            lease=
-                lease,
-
-            tenant=
-                tenant,
+            organization=organization,
+            lease=lease,
+            tenant=tenant,
+            balance__gt=0,
         )
         .exclude(
             status__in=[
@@ -3011,9 +2996,6 @@ def lease_payment_invoices(
                 "cancelled",
                 "void",
             ]
-        )
-        .filter(
-            balance__gt=0
         )
         .order_by(
             "due_date",
@@ -3024,6 +3006,7 @@ def lease_payment_invoices(
     invoices = []
 
     for invoice in invoices_queryset:
+
         invoices.append(
             {
                 "id":
@@ -3035,13 +3018,18 @@ def lease_payment_invoices(
                 "invoice_type":
                     invoice.invoice_type,
 
-                "description": (
-                    getattr(
+                "invoice_type_display": (
+                    invoice.get_invoice_type_display()
+                    if hasattr(
                         invoice,
-                        "description",
-                        ""
+                        "get_invoice_type_display"
                     )
-                    or invoice.invoice_type
+                    else invoice.invoice_type
+                ),
+
+                "is_rent_invoice": (
+                    invoice.invoice_type
+                    == "rent"
                 ),
 
                 "total_amount":

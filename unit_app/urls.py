@@ -30,6 +30,9 @@ from .api_views.prop_worker_verification import *
 from .api_views.select_worker import *
 from .api_views.record_manual_payment import *
 from .api_views.lease import *
+from .api_views.invoice import *
+
+
 
 
 
@@ -246,6 +249,12 @@ urlpatterns = [
     path("tenants/<int:tenant_id>/payment-leases/", tenant_payment_leases, name="tenant_payment_leases"),
     path("leases/<int:lease_id>/payment-invoices/", lease_payment_invoices, name="lease_payment_invoices"),
     path("payments/<int:payment_id>/", payment_details, name="payment_details"),
+
+    # invoice
+    path("invoices/create-options/", invoice_create_options, name="invoice_create_options"),
+    path("invoices/create/", create_invoice, name="create_invoice"),
+    path("invoices/", get_invoices, name="get_invoices"),
+    path("invoices/<int:invoice_id>/", invoice_details, name="invoice_details"),
 
 
 

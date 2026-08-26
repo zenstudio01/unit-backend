@@ -36,24 +36,34 @@ def record_manual_payment(request):
     # REQUEST DATA
     # ========================================================
 
-    organization_id = data.get(
-        "organization_id"
+    organization_id = (
+        data.get(
+            "organization_id"
+        )
     )
 
-    tenant_id = data.get(
-        "tenant_id"
+    tenant_id = (
+        data.get(
+            "tenant_id"
+        )
     )
 
-    lease_id = data.get(
-        "lease_id"
+    lease_id = (
+        data.get(
+            "lease_id"
+        )
     )
 
-    invoice_id = data.get(
-        "invoice_id"
+    invoice_id = (
+        data.get(
+            "invoice_id"
+        )
     )
 
-    amount_raw = data.get(
-        "amount"
+    amount_raw = (
+        data.get(
+            "amount"
+        )
     )
 
     frontend_payment_method = str(
@@ -68,8 +78,7 @@ def record_manual_payment(request):
         data.get(
             "external_reference"
         )
-        or
-        data.get(
+        or data.get(
             "reference"
         )
         or ""
@@ -100,7 +109,7 @@ def record_manual_payment(request):
     ).strip().upper()
 
     # ========================================================
-    # DEBUG REQUEST
+    # DEBUG
     # ========================================================
 
     print(
@@ -141,6 +150,13 @@ def record_manual_payment(request):
             "lease_id"
         )
 
+    # IMPORTANT:
+    # Invoice is now mandatory.
+    if not invoice_id:
+        missing_fields.append(
+            "invoice_id"
+        )
+
     if amount_raw in [
         None,
         "",
@@ -155,6 +171,7 @@ def record_manual_payment(request):
         )
 
     if missing_fields:
+        print(f"Missing field(s): {missing_fields}")
 
         return JsonResponse(
             {
@@ -171,10 +188,11 @@ def record_manual_payment(request):
         )
 
     # ========================================================
-    # NORMALIZE IDs
+    # NORMALIZE IDS
     # ========================================================
 
     try:
+
         organization_id = int(
             organization_id
         )
@@ -187,18 +205,9 @@ def record_manual_payment(request):
             lease_id
         )
 
-        if invoice_id not in [
-            None,
-            "",
-            "null",
-            "undefined",
-        ]:
-            invoice_id = int(
-                invoice_id
-            )
-
-        else:
-            invoice_id = None
+        invoice_id = int(
+            invoice_id
+        )
 
     except (
         ValueError,
@@ -211,7 +220,7 @@ def record_manual_payment(request):
                     False,
 
                 "message":
-                    "Invalid organization, tenant, lease, or invoice ID."
+                    "Organization, tenant, lease and invoice IDs must be valid numbers."
             },
             status=400,
         )
@@ -221,6 +230,7 @@ def record_manual_payment(request):
     # ========================================================
 
     try:
+
         amount = Decimal(
             str(
                 amount_raw
@@ -416,12 +426,16 @@ def record_manual_payment(request):
     # PAYMENT DATE
     # ========================================================
 
-    paid_at = timezone.now()
+    paid_at = (
+        timezone.now()
+    )
 
     if payment_date_raw:
 
-        payment_date = parse_date(
-            payment_date_raw
+        payment_date = (
+            parse_date(
+                payment_date_raw
+            )
         )
 
         if not payment_date:
@@ -464,17 +478,13 @@ def record_manual_payment(request):
     organization = (
         Organization.objects
         .filter(
-            id=organization_id
+            id=
+                organization_id
         )
         .first()
     )
 
     if not organization:
-
-        print(
-            "ORGANIZATION NOT FOUND:",
-            organization_id
-        )
 
         return JsonResponse(
             {
@@ -482,18 +492,10 @@ def record_manual_payment(request):
                     False,
 
                 "message":
-                    "Organization not found.",
-
-                "organization_id":
-                    organization_id,
+                    "Organization not found."
             },
-            status=400,
+            status=404,
         )
-
-    print(
-        "ORGANIZATION FOUND:",
-        organization.id
-    )
 
     # ========================================================
     # ORGANIZATION MEMBERSHIP
@@ -537,7 +539,8 @@ def record_manual_payment(request):
     role_codes = set(
         membership.roles
         .filter(
-            is_active=True
+            is_active=
+                True
         )
         .values_list(
             "code",
@@ -576,18 +579,16 @@ def record_manual_payment(request):
     tenant = (
         Tenant.objects
         .filter(
-            id=tenant_id,
-            organization=organization,
+            id=
+                tenant_id,
+
+            organization=
+                organization,
         )
         .first()
     )
 
     if not tenant:
-
-        print(
-            "TENANT NOT FOUND:",
-            tenant_id
-        )
 
         return JsonResponse(
             {
@@ -595,18 +596,10 @@ def record_manual_payment(request):
                     False,
 
                 "message":
-                    "Tenant not found in this organization.",
-
-                "tenant_id":
-                    tenant_id,
+                    "Tenant not found in this organization."
             },
-            status=400,
+            status=404,
         )
-
-    print(
-        "TENANT FOUND:",
-        tenant.id
-    )
 
     # ========================================================
     # LEASE
@@ -621,18 +614,16 @@ def record_manual_payment(request):
             "unit__floor",
         )
         .filter(
-            id=lease_id,
-            organization=organization,
+            id=
+                lease_id,
+
+            organization=
+                organization,
         )
         .first()
     )
 
     if not lease:
-
-        print(
-            "LEASE NOT FOUND:",
-            lease_id
-        )
 
         return JsonResponse(
             {
@@ -640,18 +631,10 @@ def record_manual_payment(request):
                     False,
 
                 "message":
-                    "Lease not found in this organization.",
-
-                "lease_id":
-                    lease_id,
+                    "Lease not found in this organization."
             },
-            status=400,
+            status=404,
         )
-
-    print(
-        "LEASE FOUND:",
-        lease.id
-    )
 
     if not lease.unit:
 
@@ -704,33 +687,13 @@ def record_manual_payment(request):
 
     if not lease_tenant:
 
-        print(
-            "TENANT NOT LINKED TO LEASE"
-        )
-
-        print(
-            "TENANT:",
-            tenant.id
-        )
-
-        print(
-            "LEASE:",
-            lease.id
-        )
-
         return JsonResponse(
             {
                 "success":
                     False,
 
                 "message":
-                    "The selected tenant is not linked to the selected lease.",
-
-                "tenant_id":
-                    tenant.id,
-
-                "lease_id":
-                    lease.id,
+                    "The selected tenant is not linked to the selected lease."
             },
             status=400,
         )
@@ -775,268 +738,7 @@ def record_manual_payment(request):
             )
 
     # ========================================================
-    # INVOICE PRE-CHECK
-    # ========================================================
-
-    invoice = None
-
-    if invoice_id:
-
-        print(
-            "SEARCHING INVOICE:",
-            invoice_id
-        )
-
-        invoice = (
-            Invoice.objects
-            .select_related(
-                "organization",
-                "tenant",
-                "lease",
-                "property",
-            )
-            .filter(
-                id=invoice_id
-            )
-            .first()
-        )
-
-        # ----------------------------------------------------
-        # INVOICE DOES NOT EXIST AT ALL
-        # ----------------------------------------------------
-
-        if not invoice:
-
-            print(
-                "INVOICE DOES NOT EXIST:",
-                invoice_id
-            )
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "The selected invoice does not exist.",
-
-                    "invoice_id":
-                        invoice_id,
-                },
-                status=400,
-            )
-
-        print(
-            "INVOICE FOUND:",
-            invoice.id
-        )
-
-        print(
-            "INVOICE ORGANIZATION:",
-            invoice.organization_id
-        )
-
-        print(
-            "INVOICE TENANT:",
-            invoice.tenant_id
-        )
-
-        print(
-            "INVOICE LEASE:",
-            invoice.lease_id
-        )
-
-        # ----------------------------------------------------
-        # ORGANIZATION
-        # ----------------------------------------------------
-
-        if (
-            invoice.organization_id
-            != organization.id
-        ):
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "The selected invoice belongs to another organization.",
-
-                    "invoice_id":
-                        invoice.id,
-
-                    "invoice_organization_id":
-                        invoice.organization_id,
-
-                    "selected_organization_id":
-                        organization.id,
-                },
-                status=400,
-            )
-
-        # ----------------------------------------------------
-        # TENANT
-        # ----------------------------------------------------
-
-        if (
-            invoice.tenant_id
-            != tenant.id
-        ):
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "The selected invoice does not belong to this tenant.",
-
-                    "invoice_id":
-                        invoice.id,
-
-                    "invoice_tenant_id":
-                        invoice.tenant_id,
-
-                    "selected_tenant_id":
-                        tenant.id,
-                },
-                status=400,
-            )
-
-        # ----------------------------------------------------
-        # LEASE
-        # ----------------------------------------------------
-
-        if (
-            invoice.lease_id
-            != lease.id
-        ):
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "The selected invoice does not belong to this lease.",
-
-                    "invoice_id":
-                        invoice.id,
-
-                    "invoice_lease_id":
-                        invoice.lease_id,
-
-                    "selected_lease_id":
-                        lease.id,
-                },
-                status=400,
-            )
-
-        # ----------------------------------------------------
-        # PROPERTY
-        # ----------------------------------------------------
-
-        if (
-            invoice.property_id
-            and
-            invoice.property_id
-            != property_obj.id
-        ):
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "The invoice belongs to a different property.",
-
-                    "invoice_property_id":
-                        invoice.property_id,
-
-                    "lease_property_id":
-                        property_obj.id,
-                },
-                status=400,
-            )
-
-        # ----------------------------------------------------
-        # STATUS
-        # ----------------------------------------------------
-
-        if invoice.status in [
-            "cancelled",
-            "void",
-        ]:
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "Payments cannot be recorded against this invoice.",
-
-                    "invoice_status":
-                        invoice.status,
-                },
-                status=400,
-            )
-
-        # ----------------------------------------------------
-        # BALANCE
-        # ----------------------------------------------------
-
-        invoice_balance = (
-            invoice.balance
-            or Decimal(
-                "0.00"
-            )
-        )
-
-        if invoice_balance <= 0:
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "This invoice has already been fully paid."
-                },
-                status=400,
-            )
-
-        # ----------------------------------------------------
-        # OVERPAYMENT
-        # ----------------------------------------------------
-
-        if amount > invoice_balance:
-
-            return JsonResponse(
-                {
-                    "success":
-                        False,
-
-                    "message":
-                        "Payment amount exceeds the invoice balance.",
-
-                    "payment_amount":
-                        str(
-                            amount
-                        ),
-
-                    "invoice_balance":
-                        str(
-                            invoice_balance
-                        ),
-                },
-                status=400,
-            )
-
-    # ========================================================
-    # CREATE PAYMENT
+    # MAIN TRANSACTION
     # ========================================================
 
     try:
@@ -1044,64 +746,127 @@ def record_manual_payment(request):
         with transaction.atomic():
 
             # =================================================
-            # LOCK INVOICE AGAIN
+            # LOCK INVOICE
             # =================================================
 
-            if invoice:
+            invoice = (
+                    Invoice.objects.select_for_update().filter(
+                        id=invoice_id,
+                        organization=organization,
+                        tenant=tenant,
+                        lease=lease,
+                    ).first()
+            )
 
-                invoice = (
-                    Invoice.objects
-                    .select_for_update()
-                    .get(
-                        id=
-                            invoice.id
-                    )
+            if not invoice:
+
+                return JsonResponse(
+                    {
+                        "success":
+                            False,
+
+                        "message":
+                            "The selected invoice was not found for this tenant and lease."
+                    },
+                    status=400,
                 )
 
-                # Re-check balance after database lock
+            # =================================================
+            # PROPERTY CHECK
+            # =================================================
 
-                invoice_balance = (
-                    invoice.balance
-                    or Decimal(
-                        "0.00"
-                    )
+            if (
+                invoice.property_id
+                and
+                invoice.property_id
+                != property_obj.id
+            ):
+
+                return JsonResponse(
+                    {
+                        "success":
+                            False,
+
+                        "message":
+                            "The selected invoice belongs to another property."
+                    },
+                    status=400,
                 )
 
-                if invoice_balance <= 0:
+            # =================================================
+            # INVOICE STATUS
+            # =================================================
 
-                    return JsonResponse(
-                        {
-                            "success":
-                                False,
+            if invoice.status in [
+                "cancelled",
+                "void",
+                "paid",
+            ]:
 
-                            "message":
-                                "This invoice has already been fully paid."
-                        },
-                        status=400,
-                    )
+                return JsonResponse(
+                    {
+                        "success":
+                            False,
 
-                if amount > invoice_balance:
+                        "message":
+                            "Payments cannot be recorded against this invoice.",
 
-                    return JsonResponse(
-                        {
-                            "success":
-                                False,
+                        "invoice_status":
+                            invoice.status,
+                    },
+                    status=400,
+                )
 
-                            "message":
-                                "Payment amount exceeds the current invoice balance.",
+            # =================================================
+            # CURRENT BALANCE
+            # =================================================
 
-                            "payment_amount":
-                                str(
-                                    amount
-                                ),
+            invoice_balance = (
+                invoice.balance
+                or Decimal(
+                    "0.00"
+                )
+            )
 
-                            "invoice_balance":
-                                str(
-                                    invoice_balance
-                                ),
-                        },
-                        status=400,
-                    )
+            if invoice_balance <= 0:
+
+                return JsonResponse(
+                    {
+                        "success":
+                            False,
+
+                        "message":
+                            "This invoice has already been fully paid."
+                    },
+                    status=400,
+                )
+
+            # =================================================
+            # OVERPAYMENT CHECK
+            # =================================================
+
+            if amount > invoice_balance:
+
+                return JsonResponse(
+                    {
+                        "success":
+                            False,
+
+                        "message":
+                            "Payment amount exceeds the invoice balance.",
+
+                        "payment_amount":
+                            str(
+                                amount
+                            ),
+
+                        "invoice_balance":
+                            str(
+                                invoice_balance
+                            ),
+                    },
+                    status=400,
+                )
 
             # =================================================
             # PAYMENT REFERENCE
@@ -1113,8 +878,23 @@ def record_manual_payment(request):
                 f"{uuid.uuid4().hex[:12].upper()}"
             )
 
+            while (
+                Payment.objects
+                .filter(
+                    payment_reference=
+                        payment_reference
+                )
+                .exists()
+            ):
+
+                payment_reference = (
+                    "PAY-"
+                    f"{organization.id}-"
+                    f"{uuid.uuid4().hex[:12].upper()}"
+                )
+
             # =================================================
-            # PAYMENT METADATA
+            # METADATA
             # =================================================
 
             metadata = {
@@ -1136,11 +916,14 @@ def record_manual_payment(request):
                 "unit_id":
                     lease.unit.id,
 
-                "invoice_id": (
-                    invoice.id
-                    if invoice
-                    else None
-                ),
+                "invoice_id":
+                    invoice.id,
+
+                "invoice_number":
+                    invoice.invoice_number,
+
+                "invoice_type":
+                    invoice.invoice_type,
 
                 "notes":
                     notes,
@@ -1153,7 +936,7 @@ def record_manual_payment(request):
             }
 
             # =================================================
-            # PAYMENT
+            # CREATE PAYMENT
             # =================================================
 
             payment = (
@@ -1205,98 +988,99 @@ def record_manual_payment(request):
             )
 
             # =================================================
-            # PAYMENT ALLOCATION
+            # CREATE PAYMENT ALLOCATION
             # =================================================
 
-            allocation = None
+            allocation = (
+                PaymentAllocation.objects
+                .create(
+                    payment=
+                        payment,
 
-            if invoice:
+                    invoice=
+                        invoice,
 
-                allocation = (
-                    PaymentAllocation.objects
-                    .create(
-                        payment=
-                            payment,
-
-                        invoice=
-                            invoice,
-
-                        allocated_amount=
-                            amount,
-                    )
+                    allocated_amount=
+                        amount,
                 )
+            )
 
-                # =============================================
-                # UPDATE INVOICE
-                # =============================================
+            print(
+                "ALLOCATION CREATED:",
+                allocation.id
+            )
 
-                current_paid_amount = (
-                    invoice.paid_amount
-                    or Decimal(
+            # =================================================
+            # UPDATE INVOICE
+            # =================================================
+
+            current_paid_amount = (
+                invoice.paid_amount
+                or Decimal(
+                    "0.00"
+                )
+            )
+
+            invoice.paid_amount = (
+                current_paid_amount
+                + amount
+            )
+
+            invoice.balance = (
+                invoice.total_amount
+                - invoice.paid_amount
+            )
+
+            if invoice.balance <= 0:
+
+                invoice.balance = (
+                    Decimal(
                         "0.00"
                     )
                 )
 
-                invoice.paid_amount = (
-                    current_paid_amount
-                    + amount
+                invoice.status = (
+                    "paid"
                 )
 
-                invoice.balance = (
-                    invoice.total_amount
-                    - invoice.paid_amount
+            else:
+
+                invoice.status = (
+                    "partially_paid"
                 )
 
-                if invoice.balance <= 0:
+            invoice.save(
+                update_fields=[
+                    "paid_amount",
+                    "balance",
+                    "status",
+                    "updated_at",
+                ]
+            )
 
-                    invoice.balance = (
-                        Decimal(
-                            "0.00"
-                        )
-                    )
+            print(
+                "INVOICE UPDATED:"
+            )
 
-                    invoice.status = (
-                        "paid"
-                    )
+            print(
+                "INVOICE:",
+                invoice.id
+            )
 
-                else:
+            print(
+                "PAID:",
+                invoice.paid_amount
+            )
 
-                    invoice.status = (
-                        "partially_paid"
-                    )
+            print(
+                "BALANCE:",
+                invoice.balance
+            )
 
-                invoice.save(
-                    update_fields=[
-                        "paid_amount",
-                        "balance",
-                        "status",
-                        "updated_at",
-                    ]
-                )
-
-                print(
-                    "INVOICE UPDATED:"
-                )
-
-                print(
-                    "INVOICE:",
-                    invoice.id
-                )
-
-                print(
-                    "PAID:",
-                    invoice.paid_amount
-                )
-
-                print(
-                    "BALANCE:",
-                    invoice.balance
-                )
-
-                print(
-                    "STATUS:",
-                    invoice.status
-                )
+            print(
+                "STATUS:",
+                invoice.status
+            )
 
             # =================================================
             # RECEIPT
@@ -1307,6 +1091,21 @@ def record_manual_payment(request):
                 f"{organization.id}-"
                 f"{uuid.uuid4().hex[:12].upper()}"
             )
+
+            while (
+                Receipt.objects
+                .filter(
+                    receipt_number=
+                        receipt_number
+                )
+                .exists()
+            ):
+
+                receipt_number = (
+                    "RCT-"
+                    f"{organization.id}-"
+                    f"{uuid.uuid4().hex[:12].upper()}"
+                )
 
             receipt = (
                 Receipt.objects.create(
@@ -1324,11 +1123,6 @@ def record_manual_payment(request):
                 )
             )
 
-            print(
-                "RECEIPT CREATED:",
-                receipt.receipt_number
-            )
-
             # =================================================
             # RESPONSE
             # =================================================
@@ -1342,6 +1136,7 @@ def record_manual_payment(request):
                     "Payment recorded successfully.",
 
                 "payment": {
+
                     "id":
                         payment.id,
 
@@ -1369,14 +1164,14 @@ def record_manual_payment(request):
                         payment.status,
 
                     "paid_at": (
-                        payment.paid_at
-                        .isoformat()
+                        payment.paid_at.isoformat()
                         if payment.paid_at
                         else None
                     ),
                 },
 
                 "tenant": {
+
                     "id":
                         tenant.id,
 
@@ -1391,6 +1186,7 @@ def record_manual_payment(request):
                 },
 
                 "lease": {
+
                     "id":
                         lease.id,
 
@@ -1416,50 +1212,19 @@ def record_manual_payment(request):
                         lease.unit.unit_code,
 
                     "building": (
-                        lease.unit
-                        .building
-                        .name
+                        lease.unit.building.name
                         if lease.unit.building
                         else None
                     ),
 
                     "floor": (
-                        lease.unit
-                        .floor
-                        .name
+                        lease.unit.floor.name
                         if lease.unit.floor
                         else None
                     ),
                 },
 
-                "receipt": {
-                    "id":
-                        receipt.id,
-
-                    "receipt_number":
-                        receipt.receipt_number,
-
-                    "issued_at": (
-                        receipt.issued_at
-                        .isoformat()
-                        if receipt.issued_at
-                        else None
-                    ),
-
-                    "file_url":
-                        receipt.file_url,
-                },
-            }
-
-            # =================================================
-            # INVOICE RESPONSE
-            # =================================================
-
-            if invoice:
-
-                response_data[
-                    "invoice"
-                ] = {
+                "invoice": {
 
                     "id":
                         invoice.id,
@@ -1487,39 +1252,37 @@ def record_manual_payment(request):
 
                     "status":
                         invoice.status,
-                }
+                },
 
-            else:
-
-                response_data[
-                    "invoice"
-                ] = None
-
-            # =================================================
-            # ALLOCATION
-            # =================================================
-
-            if allocation:
-
-                response_data[
-                    "allocation"
-                ] = {
+                "allocation": {
 
                     "id":
                         allocation.id,
 
                     "allocated_amount":
                         str(
-                            allocation
-                            .allocated_amount
+                            allocation.allocated_amount
                         ),
-                }
+                },
 
-            else:
+                "receipt": {
 
-                response_data[
-                    "allocation"
-                ] = None
+                    "id":
+                        receipt.id,
+
+                    "receipt_number":
+                        receipt.receipt_number,
+
+                    "issued_at": (
+                        receipt.issued_at.isoformat()
+                        if receipt.issued_at
+                        else None
+                    ),
+
+                    "file_url":
+                        receipt.file_url,
+                },
+            }
 
             print(
                 "========================================"
@@ -1535,6 +1298,16 @@ def record_manual_payment(request):
             )
 
             print(
+                "ALLOCATION:",
+                allocation.id
+            )
+
+            print(
+                "INVOICE:",
+                invoice.invoice_number
+            )
+
+            print(
                 "========================================\n"
             )
 
@@ -1542,10 +1315,6 @@ def record_manual_payment(request):
                 response_data,
                 status=201,
             )
-
-    # ========================================================
-    # FINAL ERROR
-    # ========================================================
 
     except Exception as error:
 

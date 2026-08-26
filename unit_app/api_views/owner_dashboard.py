@@ -264,30 +264,35 @@ def owner_dashboard(request):
     # =====================================================
 
     rent_collected = (
+        # 
         PaymentAllocation.objects
         .filter(
-            invoice__organization=
-                organization,
+        invoice__organization=
+            organization,
 
-            invoice__invoice_type=
-                "rent",
+        invoice__invoice_type=
+            "rent",
 
-            invoice__issue_date__gte=
-                month_start,
+        payment__status=
+            "completed",
 
-            invoice__issue_date__lt=
-                next_month,
+        payment__paid_at__date__gte=
+            month_start,
 
-            payment__status=
-                "completed",
-        )
-        .aggregate(
-            total=Sum(
-                "allocated_amount"
-            )
-        )["total"]
-        or Decimal("0.00")
+        payment__paid_at__date__lt=
+            next_month,
     )
+    .aggregate(
+        total=Sum(
+            "allocated_amount"
+        )
+    )["total"]
+    or Decimal(
+        "0.00"
+    )
+    )
+
+    print(f"Rent collected: {rent_collected}")
 
     # =====================================================
     # OUTSTANDING
@@ -741,3 +746,6 @@ def owner_dashboard(request):
         },
         status=200,
     )
+
+
+
