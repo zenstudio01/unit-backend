@@ -1,6 +1,8 @@
 from .common_imports import *
+from .helper import *
+from unit_app.services.kaskazi_service import ( KaskaziService, )
 
-@api_view(["GET"])
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def maintenance_kaskazi_messages(
     request,
