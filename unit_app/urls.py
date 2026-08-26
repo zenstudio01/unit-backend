@@ -29,6 +29,7 @@ from .api_views.prop_messages import *
 from .api_views.prop_worker_verification import *
 from .api_views.select_worker import *
 from .api_views.record_manual_payment import *
+from .api_views.lease import *
 
 
 
@@ -235,6 +236,23 @@ urlpatterns = [
 
     # record manual payment
     path("payments/manual/", record_manual_payment, name="record_manual_payment"),
+
+
+    # lease
+    path("leases/create/", create_lease, name="create_lease"),
+    path("tenants/", get_organization_tenants, name="get_organization_tenants"),
+    path("properties/<int:property_id>/lease-units/", get_property_units_for_lease, name="get_property_units_for_lease"),
+    path("leases/<int:lease_id>/", lease_details, name="lease_details"),
+    path("tenants/<int:tenant_id>/payment-leases/", tenant_payment_leases, name="tenant_payment_leases"),
+    path("leases/<int:lease_id>/payment-invoices/", lease_payment_invoices, name="lease_payment_invoices"),
+    path("payments/<int:payment_id>/", payment_details, name="payment_details"),
+
+
+
+
+
+
+
 
 
 
