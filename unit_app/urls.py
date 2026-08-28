@@ -31,6 +31,7 @@ from .api_views.select_worker import *
 from .api_views.record_manual_payment import *
 from .api_views.lease import *
 from .api_views.invoice import *
+from .api_views.prop_profile import *
 
 
 
@@ -123,6 +124,7 @@ urlpatterns = [
 
     # owner statements
     path("statements/owner/", owner_statements, name="owner_statements"),
+    path("statements/owner/details/", owner_statement_details, name="owner_statement_details"),
 
     # owner profile
     path("profile/owner/", get_owner_profile, name="get_owner_profile"),
@@ -218,6 +220,11 @@ urlpatterns = [
     path("subscription/paystack/verify/<str:reference>/", verify_subscription_payment, name="verify_subscription_payment"),
     path("subscription/paystack/callback/", subscription_paystack_callback, name="subscription_paystack_callback"),
     path("subscription/payments/", subscription_payment_history, name="subscription_payment_history"),
+
+
+    # prop profile
+    path("property_manager/profile/", new_property_manager_profile, name="property_manager_profile"),
+    path("property_manager/profile/update/", update_property_manager_profile, name="update_property_manager_profile"),
 
 
     # kaskazi integration -- keep this at the end
