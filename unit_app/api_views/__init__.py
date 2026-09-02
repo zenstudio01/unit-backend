@@ -23,6 +23,9 @@ from .lease import *
 from .invoice import *
 from .prop_profile import *
 
+# project management
+from .project_manager.project_manager_dashboard import *
+
 
 
 

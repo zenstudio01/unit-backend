@@ -41,8 +41,131 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 
 # models
-from unit_app.models import User, UserProfile, UserSession, OTPVerification, Organization, TenantUnitAssignment, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, OrganizationInvitation, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification,KaskaziMaintenanceBooking, SubscriptionPackage, OrganizationSubscription, SubscriptionPayment
+# from unit_app.models import User, UserProfile, UserSession, OTPVerification, Organization, TenantUnitAssignment, OrganizationBranch, Role, Permission, RolePermission, OrganizationMembership, OrganizationInvitation, Portifolio, Property, PropertyImage, Building, Floor, Unit, Amenity, PropertyAmenity, UnitAmenity, Asset, AssetDepreciationEntries, Inspection, InspectionItem, InspectionMedia, Owner, PropertyOwnership, OwnerBankAccount, Tenant, TenantEmergencyContact, TenantScreening, Lease, LeaseTenant, LeaseCharge, LeaseDeposit, LeaseRenewal, LeaseTermination, MoveRecord, Invoice, InvoiceItem, Payment, PaymentAllocation, Receipt,Penalty, PaymentReconciliation, MaintenanceTicket, MaintenanceMedia, MaintenanceComment, MaintenanceStatusHistory, MaintenanceApproval, MaintenanceWarranty, Notification,KaskaziMaintenanceBooking, SubscriptionPackage, OrganizationSubscription, SubscriptionPayment
 
+
+from unit_app.models import (
+    # =====================================================
+    # AUTHENTICATION
+    # =====================================================
+    User,
+    UserProfile,
+    UserSession,
+    OTPVerification,
+
+    # =====================================================
+    # ORGANIZATION
+    # =====================================================
+    Organization,
+    OrganizationBranch,
+    Role,
+    Permission,
+    RolePermission,
+    OrganizationMembership,
+    OrganizationInvitation,
+
+    # =====================================================
+    # PROPERTY MANAGEMENT
+    # =====================================================
+    Portifolio,
+    Property,
+    PropertyImage,
+    Building,
+    Floor,
+    Unit,
+    Amenity,
+    PropertyAmenity,
+    UnitAmenity,
+    TenantUnitAssignment,
+
+    # =====================================================
+    # ASSETS
+    # =====================================================
+    Asset,
+    AssetDepreciationEntries,
+
+    # =====================================================
+    # INSPECTIONS
+    # =====================================================
+    Inspection,
+    InspectionItem,
+    InspectionMedia,
+
+    # =====================================================
+    # OWNERS
+    # =====================================================
+    Owner,
+    PropertyOwnership,
+    OwnerBankAccount,
+
+    # =====================================================
+    # TENANTS
+    # =====================================================
+    Tenant,
+    TenantEmergencyContact,
+    TenantScreening,
+
+    # =====================================================
+    # LEASES
+    # =====================================================
+    Lease,
+    LeaseTenant,
+    LeaseCharge,
+    LeaseDeposit,
+    LeaseRenewal,
+    LeaseTermination,
+    MoveRecord,
+
+    # =====================================================
+    # INVOICES & PAYMENTS
+    # =====================================================
+    Invoice,
+    InvoiceItem,
+    Payment,
+    PaymentAllocation,
+    Receipt,
+    Penalty,
+    PaymentReconciliation,
+
+    # =====================================================
+    # MAINTENANCE
+    # =====================================================
+    MaintenanceTicket,
+    MaintenanceMedia,
+    MaintenanceComment,
+    MaintenanceStatusHistory,
+    MaintenanceApproval,
+    MaintenanceWarranty,
+    KaskaziMaintenanceBooking,
+
+    # =====================================================
+    # NOTIFICATIONS
+    # =====================================================
+    Notification,
+
+    # =====================================================
+    # SUBSCRIPTIONS
+    # =====================================================
+    SubscriptionPackage,
+    OrganizationSubscription,
+    SubscriptionPayment,
+
+    # =====================================================
+    # CONSTRUCTION PROJECT MANAGEMENT
+    # =====================================================
+    ConstructionProject,
+    ProjectPhase,
+    ProjectMilestone,
+    ProjectTask,
+    ProjectTaskDependency,
+    BOQItem,
+    Contractor,
+    ProjectContractor,
+    SiteDiary,
+    SiteDiaryMedia,
+    ProjectRisk,
+    ProjectProgressUpdate,
+)
 
 # =========================
 # Third-Party Packages
@@ -225,7 +348,6 @@ from rest_framework.permissions import (
 )
 
 
-from .common_imports import *
 from .helper import *
 
 from calendar import month_name

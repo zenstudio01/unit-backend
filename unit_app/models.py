@@ -4,6 +4,13 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator
 import uuid
 
+from decimal import Decimal
+
+from django.core.validators import (
+    MinValueValidator,
+    MaxValueValidator,
+)
+
 
 # user model
 class UserManager(BaseUserManager):
@@ -193,16 +200,24 @@ class OrganizationBranch(models.Model):
 
 class Role(models.Model):
     ROLES_NAMES = [
-        ('organization_owner', 'Organization Owner'),
-        ('organization_admin', 'Organization Admin'),
-        ('property_manager', 'Property Manager'),
-        ('accountant', 'Accountant'),
-        ('landlord', 'Landlord'),
-        ('tenant', 'Tenant'),
-        ('investor', 'Investor'),
-        ('caretaker', 'Caretaker'),
-        ('leasing_agent', 'Leasing Agent'),
-        ('support_agent', 'Support Agent'),
+        ("organization_owner", "Organization Owner"),
+        ("organization_admin", "Organization Admin"),
+        ("property_manager", "Property Manager"),
+
+        # PROJECT MANAGEMENT
+        ("project_manager", "Project Manager"),
+        ("site_manager", "Site Manager"),
+        ("site_engineer", "Site Engineer"),
+        ("quantity_surveyor", "Quantity Surveyor"),
+        ("project_accountant", "Project Accountant"),
+
+        ("accountant", "Accountant"),
+        ("landlord", "Landlord"),
+        ("tenant", "Tenant"),
+        ("investor", "Investor"),
+        ("caretaker", "Caretaker"),
+        ("leasing_agent", "Leasing Agent"),
+        ("support_agent", "Support Agent"),
     ]
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='roles')
     code = models.CharField(max_length=50)
@@ -220,10 +235,22 @@ class Role(models.Model):
 
 class Permission(models.Model):
     MODULES = [
-        ('property', 'Property'),
-        ('lease', 'Lease'),
-        ('rent', 'Rent'),
-        ('maintenance', 'Maintenance'),
+        # 
+        ("property", "Property"),
+        ("lease", "Lease"),
+        ("rent", "Rent"),
+        ("maintenance", "Maintenance"),
+
+        # PROJECT MANAGEMENT
+        ("project", "Project"),
+        ("project_phase", "Project Phase"),
+        ("project_task", "Project Task"),
+        ("project_milestone", "Project Milestone"),
+        ("site_diary", "Site Diary"),
+        ("boq", "Bill of Quantities"),
+        ("contractor", "Contractor"),
+        ("project_risk", "Project Risk"),
+        ("project_report", "Project Report"),
     ]
     ACTIONS = [
         ('create', 'Create'),
@@ -2153,6 +2180,1212 @@ class SubscriptionPayment(models.Model):
 
     def __str__(self):
         return self.payment_reference
+
+
+# project management
+
+# ============================================================
+# CONSTRUCTION PROJECT
+# ============================================================
+
+class ConstructionProject(models.Model):
+
+    PROJECT_TYPE_CHOICES = [
+        ("new_construction", "New Construction"),
+        ("renovation", "Renovation"),
+        ("extension", "Extension"),
+        ("fit_out", "Fit Out"),
+        ("infrastructure", "Infrastructure"),
+        ("residential", "Residential"),
+        ("commercial", "Commercial"),
+        ("industrial", "Industrial"),
+        ("mixed_use", "Mixed Use"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("planning", "Planning"),
+        ("pending_approval", "Pending Approval"),
+        ("approved", "Approved"),
+        ("in_progress", "In Progress"),
+        ("on_hold", "On Hold"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="construction_projects",
+    )
+
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="construction_projects",
+        help_text="Optional property linked to this construction project.",
+    )
+
+    project_code = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+    )
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    project_type = models.CharField(
+        max_length=50,
+        choices=PROJECT_TYPE_CHOICES,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    start_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    expected_end_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    actual_end_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    approved_budget = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(Decimal("0.00"))
+        ],
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="planning",
+        db_index=True,
+    )
+
+    project_manager = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_construction_projects",
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_construction_projects",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-created_at"
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "organization",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "project_manager",
+                    "status",
+                ]
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project_code} - "
+            f"{self.name}"
+        )
+
+
+# ============================================================
+# PROJECT PHASE
+# ============================================================
+
+class ProjectPhase(models.Model):
+
+    STATUS_CHOICES = [
+        ("not_started", "Not Started"),
+        ("in_progress", "In Progress"),
+        ("on_hold", "On Hold"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="phases",
+    )
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    sequence = models.PositiveIntegerField(
+        default=1,
+    )
+
+    start_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    end_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="not_started",
+        db_index=True,
+    )
+
+    completion_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(Decimal("0.00")),
+            MaxValueValidator(Decimal("100.00")),
+        ],
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "sequence"
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "project",
+                    "sequence",
+                ],
+                name=
+                    "unique_project_phase_sequence",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.name}"
+        )
+
+
+# ============================================================
+# PROJECT MILESTONE
+# ============================================================
+
+class ProjectMilestone(models.Model):
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("overdue", "Overdue"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+    )
+
+    phase = models.ForeignKey(
+        ProjectPhase,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="milestones",
+    )
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="pending",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "due_date",
+            "id",
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.name}"
+        )
+
+
+# ============================================================
+# PROJECT TASK
+# ============================================================
+
+class ProjectTask(models.Model):
+
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("urgent", "Urgent"),
+        ("critical", "Critical"),
+    ]
+
+    STATUS_CHOICES = [
+        ("todo", "To Do"),
+        ("in_progress", "In Progress"),
+        ("blocked", "Blocked"),
+        ("under_review", "Under Review"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+
+    phase = models.ForeignKey(
+        ProjectPhase,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tasks",
+    )
+
+    parent_task = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="subtasks",
+    )
+
+    title = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_project_tasks",
+    )
+
+    start_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default="medium",
+        db_index=True,
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="todo",
+        db_index=True,
+    )
+
+    completion_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(Decimal("0.00")),
+            MaxValueValidator(Decimal("100.00")),
+        ],
+    )
+
+    estimated_cost = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            )
+        ],
+    )
+
+    actual_cost = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            )
+        ],
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_project_tasks",
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-created_at"
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "project",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "assigned_to",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "due_date",
+                    "status",
+                ]
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.title}"
+        )
+
+
+# ============================================================
+# PROJECT TASK DEPENDENCY
+# ============================================================
+
+class ProjectTaskDependency(models.Model):
+
+    DEPENDENCY_TYPE_CHOICES = [
+        (
+            "finish_to_start",
+            "Finish to Start"
+        ),
+        (
+            "start_to_start",
+            "Start to Start"
+        ),
+        (
+            "finish_to_finish",
+            "Finish to Finish"
+        ),
+        (
+            "start_to_finish",
+            "Start to Finish"
+        ),
+    ]
+
+    task = models.ForeignKey(
+        ProjectTask,
+        on_delete=models.CASCADE,
+        related_name="dependencies",
+    )
+
+    depends_on_task = models.ForeignKey(
+        ProjectTask,
+        on_delete=models.CASCADE,
+        related_name="dependent_tasks",
+    )
+
+    dependency_type = models.CharField(
+        max_length=30,
+        choices=DEPENDENCY_TYPE_CHOICES,
+        default="finish_to_start",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "task",
+                    "depends_on_task",
+                ],
+                name=
+                    "unique_project_task_dependency",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.task.title} depends on "
+            f"{self.depends_on_task.title}"
+        )
+
+
+# ============================================================
+# BILL OF QUANTITIES ITEM
+# ============================================================
+
+class BOQItem(models.Model):
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("procured", "Procured"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="boq_items",
+    )
+
+    parent_item = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="children",
+    )
+
+    item_code = models.CharField(
+        max_length=100,
+    )
+
+    description = models.TextField()
+
+    unit = models.CharField(
+        max_length=50,
+        help_text=
+            "Examples: pcs, m, m2, m3, kg, tonnes, lump_sum",
+    )
+
+    quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        default=0,
+        validators=[
+            MinValueValidator(
+                Decimal("0.000")
+            )
+        ],
+    )
+
+    unit_rate = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            )
+        ],
+    )
+
+    estimated_amount = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            )
+        ],
+    )
+
+    actual_quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        default=0,
+        validators=[
+            MinValueValidator(
+                Decimal("0.000")
+            )
+        ],
+    )
+
+    actual_amount = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            )
+        ],
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="pending",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "item_code"
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "project",
+                    "item_code",
+                ],
+                name=
+                    "unique_project_boq_item_code",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.item_code} - "
+            f"{self.description[:50]}"
+        )
+
+
+# ============================================================
+# CONTRACTOR
+# ============================================================
+
+class Contractor(models.Model):
+
+    CATEGORY_CHOICES = [
+        ("general", "General Contractor"),
+        ("electrical", "Electrical Contractor"),
+        ("plumbing", "Plumbing Contractor"),
+        ("civil", "Civil Works"),
+        ("structural", "Structural Works"),
+        ("mechanical", "Mechanical"),
+        ("painting", "Painting"),
+        ("roofing", "Roofing"),
+        ("landscaping", "Landscaping"),
+        ("supplier", "Supplier"),
+        ("consultant", "Consultant"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+        ("suspended", "Suspended"),
+        ("blacklisted", "Blacklisted"),
+    ]
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="contractors",
+    )
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    registration_number = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+
+    kra_pin = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+    )
+
+    email = models.EmailField(
+        blank=True,
+        default="",
+    )
+
+    phone_number = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+    )
+
+    category = models.CharField(
+        max_length=50,
+        choices=CATEGORY_CHOICES,
+        default="general",
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="active",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "name"
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+# ============================================================
+# PROJECT CONTRACTOR
+# ============================================================
+
+class ProjectContractor(models.Model):
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("active", "Active"),
+        ("on_hold", "On Hold"),
+        ("completed", "Completed"),
+        ("terminated", "Terminated"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="project_contractors",
+    )
+
+    contractor = models.ForeignKey(
+        Contractor,
+        on_delete=models.PROTECT,
+        related_name="project_contracts",
+    )
+
+    contract_reference = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+    )
+
+    scope = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    contract_amount = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            )
+        ],
+    )
+
+    start_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    end_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="draft",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "project",
+                    "contractor",
+                    "contract_reference",
+                ],
+                name=
+                    "unique_project_contractor_contract",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.contractor.name}"
+        )
+
+
+# ============================================================
+# SITE DIARY
+# ============================================================
+
+class SiteDiary(models.Model):
+
+    WEATHER_CHOICES = [
+        ("sunny", "Sunny"),
+        ("cloudy", "Cloudy"),
+        ("rainy", "Rainy"),
+        ("stormy", "Stormy"),
+        ("windy", "Windy"),
+        ("mixed", "Mixed"),
+        ("other", "Other"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="site_diaries",
+    )
+
+    entry_date = models.DateField(
+        db_index=True,
+    )
+
+    weather = models.CharField(
+        max_length=30,
+        choices=WEATHER_CHOICES,
+        null=True,
+        blank=True,
+    )
+
+    workers_present = models.PositiveIntegerField(
+        default=0,
+    )
+
+    work_completed = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    materials_received = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    equipment_used = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    issues = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="created_site_diaries",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-entry_date",
+            "-created_at",
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "project",
+                    "entry_date",
+                ],
+                name=
+                    "unique_project_site_diary_date",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.entry_date}"
+        )
+
+
+# ============================================================
+# SITE DIARY MEDIA
+# ============================================================
+
+class SiteDiaryMedia(models.Model):
+
+    FILE_TYPE_CHOICES = [
+        ("image", "Image"),
+        ("video", "Video"),
+        ("document", "Document"),
+        ("other", "Other"),
+    ]
+
+    site_diary = models.ForeignKey(
+        SiteDiary,
+        on_delete=models.CASCADE,
+        related_name="media",
+    )
+
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploaded_site_diary_media",
+    )
+
+    file_url = models.URLField(
+        max_length=500,
+    )
+
+    file_type = models.CharField(
+        max_length=20,
+        choices=FILE_TYPE_CHOICES,
+        default="image",
+    )
+
+    caption = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    def __str__(self):
+        return (
+            f"{self.site_diary.project.project_code} - "
+            f"{self.file_type}"
+        )
+
+
+# ============================================================
+# PROJECT RISK
+# ============================================================
+
+class ProjectRisk(models.Model):
+
+    LIKELIHOOD_CHOICES = [
+        ("rare", "Rare"),
+        ("unlikely", "Unlikely"),
+        ("possible", "Possible"),
+        ("likely", "Likely"),
+        ("almost_certain", "Almost Certain"),
+    ]
+
+    IMPACT_CHOICES = [
+        ("insignificant", "Insignificant"),
+        ("minor", "Minor"),
+        ("moderate", "Moderate"),
+        ("major", "Major"),
+        ("severe", "Severe"),
+    ]
+
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("monitoring", "Monitoring"),
+        ("mitigated", "Mitigated"),
+        ("closed", "Closed"),
+        ("accepted", "Accepted"),
+    ]
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="risks",
+    )
+
+    title = models.CharField(
+        max_length=255,
+    )
+
+    description = models.TextField()
+
+    likelihood = models.CharField(
+        max_length=30,
+        choices=LIKELIHOOD_CHOICES,
+    )
+
+    impact = models.CharField(
+        max_length=30,
+        choices=IMPACT_CHOICES,
+    )
+
+    risk_score = models.PositiveIntegerField(
+        default=1,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(25),
+        ],
+    )
+
+    mitigation = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_project_risks",
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="open",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-risk_score",
+            "-created_at",
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.title}"
+        )
+
+
+# ============================================================
+# PROJECT PROGRESS UPDATE
+# ============================================================
+
+class ProjectProgressUpdate(models.Model):
+
+    project = models.ForeignKey(
+        ConstructionProject,
+        on_delete=models.CASCADE,
+        related_name="progress_updates",
+    )
+
+    phase = models.ForeignKey(
+        ProjectPhase,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="progress_updates",
+    )
+
+    task = models.ForeignKey(
+        ProjectTask,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="progress_updates",
+    )
+
+    completion_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(
+                Decimal("0.00")
+            ),
+            MaxValueValidator(
+                Decimal("100.00")
+            ),
+        ],
+    )
+
+    summary = models.TextField()
+
+    reported_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="project_progress_reports",
+    )
+
+    reported_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-reported_at"
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "project",
+                    "reported_at",
+                ]
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.project.project_code} - "
+            f"{self.completion_percentage}%"
+        )
 
 
 

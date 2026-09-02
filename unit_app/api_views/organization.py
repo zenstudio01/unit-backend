@@ -6,65 +6,147 @@ from .helper import *
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_organization(request):
+
     user = request.user
     data = request.data
 
-    # --------------------------------------------------
-    # Read fields
-    # --------------------------------------------------
+    # =====================================================
+    # READ DATA
+    # =====================================================
 
     name = str(
-        data.get("name", "")
+        data.get(
+            "name",
+            ""
+        )
+        or ""
     ).strip()
 
     organization_type = str(
-        data.get("organization_type", "")
+        data.get(
+            "organization_type",
+            ""
+        )
+        or ""
+    ).strip()
+
+    requested_role = str(
+        data.get(
+            "requested_role",
+            ""
+        )
+        or ""
     ).strip()
 
     kra_pin = str(
-        data.get("kra_pin", "")
+        data.get(
+            "kra_pin",
+            ""
+        )
+        or ""
     ).strip().upper()
 
     email = str(
-        data.get("email", "")
+        data.get(
+            "email",
+            ""
+        )
+        or ""
     ).strip().lower()
 
     phone_number = str(
-        data.get("phone_number", "")
+        data.get(
+            "phone_number",
+            ""
+        )
+        or ""
     ).strip()
 
     website = str(
-        data.get("website", "")
+        data.get(
+            "website",
+            ""
+        )
+        or ""
     ).strip()
 
     country = str(
-        data.get("country", "Kenya")
+        data.get(
+            "country",
+            "Kenya"
+        )
+        or "Kenya"
     ).strip()
 
     county = str(
-        data.get("county", "")
+        data.get(
+            "county",
+            ""
+        )
+        or ""
     ).strip()
 
     city = str(
-        data.get("city", "")
+        data.get(
+            "city",
+            ""
+        )
+        or ""
     ).strip()
 
     address = str(
-        data.get("address", "")
+        data.get(
+            "address",
+            ""
+        )
+        or ""
     ).strip()
 
     logo = str(
-        data.get("logo", "")
+        data.get(
+            "logo",
+            ""
+        )
+        or ""
     ).strip()
 
-    # --------------------------------------------------
-    # Required fields
-    # --------------------------------------------------
+    print(
+        "========================================"
+    )
+
+    print(
+        "CREATE ORGANIZATION"
+    )
+
+    print(
+        "NAME:",
+        name
+    )
+
+    print(
+        "ORGANIZATION TYPE:",
+        organization_type
+    )
+
+    print(
+        "REQUESTED ROLE:",
+        requested_role
+    )
+
+    print(
+        "========================================"
+    )
+
+    # =====================================================
+    # REQUIRED FIELDS
+    # =====================================================
 
     missing_fields = []
 
     if not name:
-        missing_fields.append("name")
+        missing_fields.append(
+            "name"
+        )
 
     if not organization_type:
         missing_fields.append(
@@ -72,7 +154,9 @@ def create_organization(request):
         )
 
     if not email:
-        missing_fields.append("email")
+        missing_fields.append(
+            "email"
+        )
 
     if not phone_number:
         missing_fields.append(
@@ -80,32 +164,46 @@ def create_organization(request):
         )
 
     if not country:
-        missing_fields.append("country")
+        missing_fields.append(
+            "country"
+        )
 
     if not county:
-        missing_fields.append("county")
+        missing_fields.append(
+            "county"
+        )
 
     if not city:
-        missing_fields.append("city")
+        missing_fields.append(
+            "city"
+        )
 
     if not address:
-        missing_fields.append("address")
+        missing_fields.append(
+            "address"
+        )
 
     if missing_fields:
+
         return JsonResponse(
             {
+                "success":
+                    False,
+
                 "message":
                     "Missing required organization fields.",
-                "fields": missing_fields,
+
+                "fields":
+                    missing_fields,
             },
             status=400,
         )
 
-    # --------------------------------------------------
-    # Validate organization type
-    # --------------------------------------------------
+    # =====================================================
+    # ORGANIZATION TYPE
+    # =====================================================
 
-    valid_organization_types = [
+    valid_organization_types = {
         "property_manager",
         "landlord",
         "developer",
@@ -114,111 +212,193 @@ def create_organization(request):
         "investor",
         "corporate_client",
         "other",
-    ]
+    }
 
     if (
         organization_type
         not in valid_organization_types
     ):
+
         return JsonResponse(
             {
+                "success":
+                    False,
+
                 "message":
                     "Invalid organization type."
             },
             status=400,
         )
 
-    # --------------------------------------------------
-    # Duplicate checks
-    # --------------------------------------------------
+    # =====================================================
+    # REQUESTED ROLE
+    # =====================================================
 
-    if Organization.objects.filter(
-        name__iexact=name
-    ).exists():
+    valid_requested_roles = {
+        "property_manager",
+        "project_manager",
+        "investor",
+        "service_provider",
+        "landlord",
+        "organization_owner",
+    }
+
+    if (
+        requested_role
+        and
+        requested_role
+        not in valid_requested_roles
+    ):
+
         return JsonResponse(
             {
+                "success":
+                    False,
+
+                "message":
+                    "Invalid requested role."
+            },
+            status=400,
+        )
+
+    # =====================================================
+    # DUPLICATES
+    # =====================================================
+
+    if (
+        Organization.objects
+        .filter(
+            name__iexact=
+                name
+        )
+        .exists()
+    ):
+
+        return JsonResponse(
+            {
+                "success":
+                    False,
+
                 "message":
                     "An organization with this name already exists."
             },
             status=400,
         )
 
-    if (
-        kra_pin
-        and Organization.objects.filter(
-            kra_pin__iexact=kra_pin
-        ).exists()
-    ):
-        return JsonResponse(
-            {
-                "message":
-                    "An organization with this KRA PIN already exists."
-            },
-            status=400,
+    if kra_pin:
+
+        kra_exists = (
+            Organization.objects
+            .filter(
+                kra_pin__iexact=
+                    kra_pin
+            )
+            .exists()
         )
 
-    # --------------------------------------------------
-    # Generate unique slug
-    # --------------------------------------------------
+        if kra_exists:
 
-    base_slug = slugify(name)
+            return JsonResponse(
+                {
+                    "success":
+                        False,
 
-    if not base_slug:
-        base_slug = "organization"
+                    "message":
+                        "An organization with this KRA PIN already exists."
+                },
+                status=400,
+            )
 
-    slug = base_slug
+    # =====================================================
+    # SLUG
+    # =====================================================
+
+    base_slug = (
+        slugify(
+            name
+        )
+        or
+        "organization"
+    )
+
+    slug = (
+        base_slug
+    )
 
     counter = 1
 
-    while Organization.objects.filter(
-        slug=slug
-    ).exists():
+    while (
+        Organization.objects
+        .filter(
+            slug=slug
+        )
+        .exists()
+    ):
 
-        slug = f"{base_slug}-{counter}"
+        slug = (
+            f"{base_slug}-{counter}"
+        )
 
         counter += 1
 
+    # =====================================================
+    # CREATE
+    # =====================================================
+
     try:
+
         with transaction.atomic():
 
-            # ------------------------------------------
-            # Create organization
-            # ------------------------------------------
+            # =================================================
+            # ORGANIZATION
+            # =================================================
 
             organization = (
-                Organization.objects.create(
-                    created_by=user,
+                Organization.objects
+                .create(
+                    created_by=
+                        user,
 
-                    name=name,
+                    name=
+                        name,
 
-                    slug=slug,
+                    slug=
+                        slug,
 
                     organization_type=
                         organization_type,
 
                     kra_pin=
-                        kra_pin or None,
+                        kra_pin
+                        or None,
 
-                    email=email,
+                    email=
+                        email,
 
                     phone_number=
                         phone_number,
 
                     website=
-                        website or None,
+                        website
+                        or None,
 
-                    country=country,
+                    country=
+                        country,
 
-                    county=county,
+                    county=
+                        county,
 
-                    city=city,
+                    city=
+                        city,
 
-                    address=address,
+                    address=
+                        address,
 
                     logo=(
                         logo
                         if logo
-                        else (
+                        else
+                        (
                             "https://res.cloudinary.com/"
                             "dc68huvjj/image/upload/"
                             "v1748102584/"
@@ -226,22 +406,31 @@ def create_organization(request):
                         )
                     ),
 
-                    is_verified=False,
+                    is_verified=
+                        False,
                 )
             )
 
-            # create organization subscription
-            create_trial_subscription(organization)
+            # =================================================
+            # TRIAL SUBSCRIPTION
+            # =================================================
 
-            # ------------------------------------------
-            # Create organization owner role
-            # ------------------------------------------
+            create_trial_subscription(
+                organization
+            )
+
+            # =================================================
+            # ORGANIZATION OWNER ROLE
+            # =================================================
 
             owner_role, _ = (
-                Role.objects.get_or_create(
-                    organization=organization,
+                Role.objects
+                .get_or_create(
+                    organization=
+                        organization,
 
-                    code="organization_owner",
+                    code=
+                        "organization_owner",
 
                     defaults={
                         "name":
@@ -250,8 +439,7 @@ def create_organization(request):
                         "description":
                             (
                                 "Owner of the organization "
-                                "with full administrative "
-                                "access."
+                                "with full administrative access."
                             ),
 
                         "scope":
@@ -266,54 +454,319 @@ def create_organization(request):
                 )
             )
 
-            # ------------------------------------------
-            # Generate employee/member number
-            # ------------------------------------------
+            # =================================================
+            # DETERMINE DEFAULT WORKING ROLE
+            # =================================================
+
+            primary_role = (
+                owner_role
+            )
+
+            job_title = (
+                "Organization Owner"
+            )
+
+            additional_role = (
+                None
+            )
+
+            # =================================================
+            # PROJECT MANAGER
+            # =================================================
+
+            if (
+                requested_role
+                ==
+                "project_manager"
+            ):
+
+                additional_role, _ = (
+                    Role.objects
+                    .get_or_create(
+                        organization=
+                            organization,
+
+                        code=
+                            "project_manager",
+
+                        defaults={
+                            "name":
+                                "project_manager",
+
+                            "description":
+                                (
+                                    "Manages construction projects, "
+                                    "tasks, milestones, budgets, "
+                                    "contractors and site activities."
+                                ),
+
+                            "scope":
+                                "project_management",
+
+                            "is_system_role":
+                                True,
+
+                            "is_active":
+                                True,
+                        },
+                    )
+                )
+
+                primary_role = (
+                    additional_role
+                )
+
+                job_title = (
+                    "Project Manager"
+                )
+
+            # =================================================
+            # PROPERTY MANAGER
+            # =================================================
+
+            elif (
+                requested_role
+                ==
+                "property_manager"
+            ):
+
+                additional_role, _ = (
+                    Role.objects
+                    .get_or_create(
+                        organization=
+                            organization,
+
+                        code=
+                            "property_manager",
+
+                        defaults={
+                            "name":
+                                "property_manager",
+
+                            "description":
+                                (
+                                    "Manages properties, tenants, "
+                                    "leases, payments and maintenance."
+                                ),
+
+                            "scope":
+                                "property_management",
+
+                            "is_system_role":
+                                True,
+
+                            "is_active":
+                                True,
+                        },
+                    )
+                )
+
+                primary_role = (
+                    additional_role
+                )
+
+                job_title = (
+                    "Property Manager"
+                )
+
+            # =================================================
+            # INVESTOR
+            # =================================================
+
+            elif (
+                requested_role
+                ==
+                "investor"
+            ):
+
+                additional_role, _ = (
+                    Role.objects
+                    .get_or_create(
+                        organization=
+                            organization,
+
+                        code=
+                            "investor",
+
+                        defaults={
+                            "name":
+                                "investor",
+
+                            "description":
+                                (
+                                    "Views investments, property "
+                                    "performance and financial reports."
+                                ),
+
+                            "scope":
+                                "investment",
+
+                            "is_system_role":
+                                True,
+
+                            "is_active":
+                                True,
+                        },
+                    )
+                )
+
+                primary_role = (
+                    additional_role
+                )
+
+                job_title = (
+                    "Investor"
+                )
+
+            # =================================================
+            # LANDLORD
+            # =================================================
+
+            elif (
+                requested_role
+                ==
+                "landlord"
+            ):
+
+                additional_role, _ = (
+                    Role.objects
+                    .get_or_create(
+                        organization=
+                            organization,
+
+                        code=
+                            "landlord",
+
+                        defaults={
+                            "name":
+                                "landlord",
+
+                            "description":
+                                "Property owner or landlord.",
+
+                            "scope":
+                                "property",
+
+                            "is_system_role":
+                                True,
+
+                            "is_active":
+                                True,
+                        },
+                    )
+                )
+
+                primary_role = (
+                    additional_role
+                )
+
+                job_title = (
+                    "Landlord"
+                )
+
+            # =================================================
+            # MEMBER NUMBER
+            # =================================================
 
             employee_number = (
                 "UNIT-"
-                + uuid.uuid4().hex[
-                    :10
-                ].upper()
+                +
+                uuid.uuid4()
+                .hex[:10]
+                .upper()
             )
 
-            # ------------------------------------------
-            # Create membership
-            # ------------------------------------------
+            # =================================================
+            # MEMBERSHIP
+            # =================================================
 
             membership = (
-                OrganizationMembership.objects.create(
-                    user=user,
+                OrganizationMembership.objects
+                .create(
+                    user=
+                        user,
 
-                    organization=organization,
+                    organization=
+                        organization,
 
-                    # role=owner_role,
+                    primary_role=
+                        primary_role,
 
                     employee_number=
                         employee_number,
 
                     job_title=
-                        "Organization Owner",
+                        job_title,
 
                     is_primary_contact=
                         True,
 
-                    is_active=True,
+                    is_active=
+                        True,
                 )
             )
-            membership.roles.add(owner_role)
 
-        # --------------------------------------------------
-        # Response
-        # --------------------------------------------------
+            # =================================================
+            # ALWAYS ADD OWNER ROLE
+            # =================================================
+
+            membership.roles.add(
+                owner_role
+            )
+
+            # =================================================
+            # ADD WORKING ROLE
+            # =================================================
+
+            if (
+                additional_role
+                and
+                additional_role.id
+                !=
+                owner_role.id
+            ):
+
+                membership.roles.add(
+                    additional_role
+                )
+
+            # =================================================
+            # OPTIONAL:
+            # SAVE REQUESTED ROLE ON USER
+            # =================================================
+
+            if hasattr(
+                user,
+                "requested_role"
+            ):
+
+                user.requested_role = (
+                    requested_role
+                )
+
+                user.save(
+                    update_fields=[
+                        "requested_role"
+                    ]
+                )
+
+        # =====================================================
+        # RESPONSE
+        # =====================================================
 
         return JsonResponse(
             {
+                "success":
+                    True,
+
                 "message":
                     "Organization created successfully.",
 
                 "next_step":
                     "select_organization",
+
+                "role":
+                    primary_role.code,
 
                 "organization": {
                     "id":
@@ -366,13 +819,38 @@ def create_organization(request):
                     "employee_number":
                         membership.employee_number,
 
+                    "job_title":
+                        membership.job_title,
+
+                    "primary_role": {
+                        "id":
+                            primary_role.id,
+
+                        "code":
+                            primary_role.code,
+
+                        "name":
+                            primary_role
+                            .get_name_display(),
+                    },
+
                     "roles": [
                         {
-                            "id": role.id,
-                            "code": role.code,
-                            "name": role.get_name_display(),
+                            "id":
+                                role.id,
+
+                            "code":
+                                role.code,
+
+                            "name":
+                                role
+                                .get_name_display(),
                         }
-                        for role in membership.roles.all()
+
+                        for role
+                        in membership
+                        .roles
+                        .all()
                     ],
 
                     "is_primary_contact":
@@ -383,15 +861,37 @@ def create_organization(request):
         )
 
     except Exception as error:
+
         print(
-            "CREATE ORGANIZATION ERROR:",
-            str(error),
+            "========================================"
+        )
+
+        print(
+            "CREATE ORGANIZATION ERROR:"
+        )
+
+        print(
+            repr(
+                error
+            )
+        )
+
+        print(
+            "========================================"
         )
 
         return JsonResponse(
             {
+                "success":
+                    False,
+
                 "message":
-                    "Unable to create organization."
+                    "Unable to create organization.",
+
+                "error":
+                    str(
+                        error
+                    ),
             },
             status=500,
         )
