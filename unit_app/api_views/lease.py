@@ -3628,3 +3628,182 @@ def payment_details(
     )
 
 
+
+
+
+
+ALLOWED_LEASE_ROLES = {
+    "organization_owner",
+    "organization_admin",
+    "property_manager",
+    "leasing_agent",
+    "owner",
+    "landlord",
+}
+
+
+def serialize_lease(lease):
+    unit = lease.unit
+    property_obj = unit.property if unit else None
+
+    tenant_links = (
+        LeaseTenant.objects
+        .filter(lease=lease)
+        .select_related("tenant")
+        .order_by("-is_primary", "joined_at")
+    )
+
+    tenants = []
+
+    for link in tenant_links:
+        tenant = link.tenant
+
+        tenants.append({
+            "id": tenant.id,
+            "full_name": tenant.full_name,
+            "email": tenant.email,
+            "phone_number": tenant.phone_number,
+            "is_primary": link.is_primary,
+            "tenant_role": link.tenant_role,
+        })
+
+    primary_tenant = next(
+        (tenant for tenant in tenants if tenant["is_primary"]),
+        tenants[0] if tenants else None,
+    )
+
+    return {
+        "id": lease.id,
+        "lease_number": lease.lease_number,
+        "status": lease.status,
+        "start_date": str(lease.start_date) if lease.start_date else None,
+        "end_date": str(lease.end_date) if lease.end_date else None,
+        "monthly_rent": str(lease.monthly_rent),
+        "deposit_amount": str(lease.deposit_amount),
+        "billing_day": lease.billing_day,
+        "payment_frequency": lease.payment_frequency,
+        "grace_period_days": lease.grace_period_days,
+        "created_at": (
+            lease.created_at.isoformat()
+            if hasattr(lease, "created_at") and lease.created_at
+            else None
+        ),
+        "property": {
+            "id": property_obj.id,
+            "name": property_obj.name,
+        } if property_obj else None,
+        "unit": {
+            "id": unit.id,
+            "name": getattr(unit, "name", None),
+            "unit_code": getattr(unit, "unit_code", None),
+        } if unit else None,
+        "primary_tenant": primary_tenant,
+        "tenants": tenants,
+        "tenant_count": len(tenants),
+    }
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def property_manager_leases(request):
+    organization_id = request.query_params.get("organization_id")
+
+    if not organization_id:
+        return Response(
+            {"message": "organization_id is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    organization = Organization.objects.filter(
+        id=organization_id
+    ).first()
+
+    if not organization:
+        return Response(
+            {"message": "Organization not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    membership = OrganizationMembership.objects.filter(
+        organization=organization,
+        user=request.user,
+        is_active=True,
+    ).prefetch_related("roles").first()
+
+    if not membership:
+        return Response(
+            {"message": "You do not have access to this organization."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    role_codes = set(
+        membership.roles.filter(is_active=True)
+        .values_list("code", flat=True)
+    )
+
+    if not role_codes.intersection(ALLOWED_LEASE_ROLES):
+        return Response(
+            {"message": "You do not have permission to view leases."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    leases = (
+        Lease.objects
+        .filter(organization=organization)
+        .select_related("unit", "unit__property")
+        .prefetch_related("lease_tenants", "lease_tenants__tenant")
+        .order_by("-id")
+    )
+
+    selected_status = request.query_params.get("status", "all").strip()
+    search = request.query_params.get("search", "").strip()
+    property_id = request.query_params.get("property_id")
+
+    if selected_status and selected_status != "all":
+        leases = leases.filter(status=selected_status)
+
+    if property_id:
+        leases = leases.filter(unit__property_id=property_id)
+
+    if search:
+        leases = leases.filter(
+            Q(lease_number__icontains=search)
+            | Q(unit__name__icontains=search)
+            | Q(unit__unit_code__icontains=search)
+            | Q(unit__property__name__icontains=search)
+            | Q(lease_tenants__tenant__full_name__icontains=search)
+            | Q(lease_tenants__tenant__email__icontains=search)
+            | Q(lease_tenants__tenant__phone_number__icontains=search)
+        ).distinct()
+
+    today = timezone.localdate()
+
+    all_leases = Lease.objects.filter(organization=organization)
+
+    data = [serialize_lease(lease) for lease in leases]
+
+    summary = {
+        "total": all_leases.count(),
+        "active": all_leases.filter(status="active").count(),
+        "draft": all_leases.filter(status="draft").count(),
+        "expired": all_leases.filter(status="expired").count(),
+        "expiring_soon": all_leases.filter(
+            status="active",
+            end_date__gte=today,
+            end_date__lte=today + timezone.timedelta(days=30),
+        ).count(),
+        "monthly_rent": str(
+            all_leases.filter(status="active").aggregate(
+                total=Sum("monthly_rent")
+            )["total"] or 0
+        ),
+    }
+
+    return Response({
+        "success": True,
+        "summary": summary,
+        "leases": data,
+        "count": len(data),
+    })
+
+

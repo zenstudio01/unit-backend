@@ -33,6 +33,13 @@ from .api_views.lease import *
 from .api_views.invoice import *
 from .api_views.prop_profile import *
 
+# project manager
+from .api_views.project_manager.project_manager_dashboard import *
+from .api_views.project_manager.project_manager_projects import *
+from .api_views.project_manager.project_manager_tasks import *
+from .api_views.project_manager.project_manager_site_diary import *
+from .api_views.project_manager.project_manager_profile import *
+
 
 
 
@@ -256,12 +263,35 @@ urlpatterns = [
     path("tenants/<int:tenant_id>/payment-leases/", tenant_payment_leases, name="tenant_payment_leases"),
     path("leases/<int:lease_id>/payment-invoices/", lease_payment_invoices, name="lease_payment_invoices"),
     path("payments/<int:payment_id>/", payment_details, name="payment_details"),
+    path("leases/", property_manager_leases, name="property-manager-leases"),
 
     # invoice
     path("invoices/create-options/", invoice_create_options, name="invoice_create_options"),
     path("invoices/create/", create_invoice, name="create_invoice"),
     path("invoices/", get_invoices, name="get_invoices"),
     path("invoices/<int:invoice_id>/", invoice_details, name="invoice_details"),
+
+
+    # ==========================================
+    # project manager module
+    # ==========================================
+    # dashboard
+    path("project-manager/dashboard/", project_manager_dashboard, name="project-manager-dashboard"),
+    # projects
+    path("project-manager/projects/", project_manager_projects, name="project-manager-projects"),
+    path("project-manager/projects/<int:project_id>/", project_manager_project_detail, name="project-manager-project-detail"),
+
+    # tasks
+    path("project-manager/tasks/", project_manager_tasks, name="project-manager-tasks"),
+    path("project-manager/tasks/<int:task_id>/", project_manager_task_detail, name="project-manager-task-detail"),
+
+    # site diary
+    path("project-manager/site-diary/", project_manager_site_diary, name="project-manager-site-diary"),
+    path("project-manager/site-diary/<int:entry_id>/", project_manager_site_diary_detail, name="project-manager-site-diary-detail"),
+
+    # profile
+    path("project-manager/profile/", project_manager_profile, name="project-manager-profile"),
+    path("project-manager/profile/change-password/", project_manager_change_password, name="project-manager-change-password"),
 
 
 
