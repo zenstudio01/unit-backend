@@ -973,6 +973,8 @@ def accept_invitation_web(request):
 
                         primary_role=
                             invitation.primary_role,
+                        
+                        employee_number=f"EMP-{uuid.uuid4().hex[:10].upper()}",
 
                         is_active=True,
                     )

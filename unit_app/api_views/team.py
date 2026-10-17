@@ -551,7 +551,7 @@ def add_team_member(request):
         # -------------------------------------------------
 
         activation_link = (
-            "https://unit-backend-lof1.onrender.com/api/v1/"
+            "https://unit-backend-jo1w.onrender.com/api/v1/"
             f"invitations/accept_invitation/?token="
             f"{invitation.token}"
         )

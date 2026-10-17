@@ -299,7 +299,7 @@ class OrganizationMembership(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.organization.name} - {self.role.name}"
+        return f"{self.user.username} - {self.organization.name} - {self.roles.all().first().name}"
 
 
 
