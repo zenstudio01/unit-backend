@@ -1,10 +1,19 @@
 from django.contrib.auth.models import AbstractUser,  BaseUserManager
 from django.db import models
 from django.utils import timezone
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
 from decimal import Decimal
+
+from django.conf import settings
+
+
+from decimal import Decimal
+from django.db import models
+from django.db.models import Q
+
+from django.core.validators import FileExtensionValidator
 
 from django.core.validators import (
     MinValueValidator,
@@ -2736,138 +2745,213 @@ class ProjectTaskDependency(models.Model):
         )
 
 
+
+
+class ProjectBudget(models.Model):
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="budget_allocations",
+    )
+    phase = models.ForeignKey(
+        "ProjectPhase",
+        on_delete=models.PROTECT,
+        related_name="budget_allocations",
+        null=True,
+        blank=True,
+    )
+    name = models.CharField(max_length=200)
+    amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.project_id} - {self.name}"
+
+
+class ProjectExpense(models.Model):
+    CATEGORY_CHOICES = [
+        ("materials", "Materials"),
+        ("labour", "Labour"),
+        ("equipment", "Equipment"),
+        ("transport", "Transport"),
+        ("permits", "Permits & Approvals"),
+        ("professional_fees", "Professional Fees"),
+        ("utilities", "Utilities"),
+        ("subcontractors", "Subcontractors"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("pending", "Pending Approval"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("paid", "Paid"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="expenses",
+    )
+    budget = models.ForeignKey(
+        ProjectBudget,
+        on_delete=models.PROTECT,
+        related_name="expenses",
+    )
+    phase = models.ForeignKey(
+        "ProjectPhase",
+        on_delete=models.PROTECT,
+        related_name="expenses",
+        null=True,
+        blank=True,
+    )
+    boq_item = models.ForeignKey(
+        "BOQItem",
+        on_delete=models.PROTECT,
+        related_name="project_expenses",
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default="other",
+    )
+    amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    expense_date = models.DateField()
+    vendor = models.CharField(max_length=200, blank=True)
+    payment_reference = models.CharField(
+        max_length=150, blank=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="draft",
+    )
+    created_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_project_expenses",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-expense_date", "-id"]
+
+    def __str__(self):
+        return f"{self.title} - {self.amount}"
+
+
+
 # ============================================================
 # BILL OF QUANTITIES ITEM
 # ============================================================
 
-class BOQItem(models.Model):
 
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("approved", "Approved"),
-        ("procured", "Procured"),
-        ("in_progress", "In Progress"),
-        ("completed", "Completed"),
-        ("cancelled", "Cancelled"),
+
+class BOQSection(models.Model):
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="boq_sections"
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    sequence = models.PositiveIntegerField(default=1)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sequence", "id"]
+
+    def __str__(self):
+        return f"{self.project_id} - {self.name}"
+
+
+class BOQItem(models.Model):
+    UNIT_CHOICES = [
+        ("m", "Metres"),
+        ("m2", "Square Metres"),
+        ("m3", "Cubic Metres"),
+        ("kg", "Kilograms"),
+        ("ton", "Tonnes"),
+        ("pcs", "Pieces"),
+        ("bags", "Bags"),
+        ("litres", "Litres"),
+        ("lot", "Lump Sum"),
+        ("days", "Days"),
+        ("hours", "Hours"),
     ]
 
-    project = models.ForeignKey(
-        ConstructionProject,
+    section = models.ForeignKey(
+        BOQSection,
         on_delete=models.CASCADE,
-        related_name="boq_items",
+        related_name="items"
     )
-
-    parent_item = models.ForeignKey(
-        "self",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="children",
-    )
-
     item_code = models.CharField(
-        max_length=100,
-    )
-
-    description = models.TextField()
-
-    unit = models.CharField(
         max_length=50,
-        help_text=
-            "Examples: pcs, m, m2, m3, kg, tonnes, lump_sum",
+        blank=True
     )
-
+    description = models.TextField()
+    unit = models.CharField(
+        max_length=20,
+        choices=UNIT_CHOICES,
+        default="pcs"
+    )
     quantity = models.DecimalField(
         max_digits=14,
         decimal_places=3,
-        default=0,
-        validators=[
-            MinValueValidator(
-                Decimal("0.000")
-            )
-        ],
+        default=0
     )
-
     unit_rate = models.DecimalField(
         max_digits=16,
         decimal_places=2,
-        default=0,
-        validators=[
-            MinValueValidator(
-                Decimal("0.00")
-            )
-        ],
+        default=0
     )
-
-    estimated_amount = models.DecimalField(
-        max_digits=16,
+    actual_cost = models.DecimalField(
+        max_digits=18,
         decimal_places=2,
-        default=0,
-        validators=[
-            MinValueValidator(
-                Decimal("0.00")
-            )
-        ],
+        default=0
     )
+    notes = models.TextField(blank=True)
 
-    actual_quantity = models.DecimalField(
-        max_digits=14,
-        decimal_places=3,
-        default=0,
-        validators=[
-            MinValueValidator(
-                Decimal("0.000")
-            )
-        ],
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    actual_amount = models.DecimalField(
-        max_digits=16,
-        decimal_places=2,
-        default=0,
-        validators=[
-            MinValueValidator(
-                Decimal("0.00")
-            )
-        ],
-    )
+    @property
+    def estimated_cost(self):
+        return (
+            self.quantity * self.unit_rate
+        ).quantize(Decimal("0.01"))
 
-    status = models.CharField(
-        max_length=30,
-        choices=STATUS_CHOICES,
-        default="pending",
-        db_index=True,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-    class Meta:
-        ordering = [
-            "item_code"
-        ]
-
-        constraints = [
-            models.UniqueConstraint(
-                fields=[
-                    "project",
-                    "item_code",
-                ],
-                name=
-                    "unique_project_boq_item_code",
-            ),
-        ]
+    @property
+    def variance(self):
+        return (
+            self.estimated_cost - self.actual_cost
+        ).quantize(Decimal("0.01"))
 
     def __str__(self):
-        return (
-            f"{self.item_code} - "
-            f"{self.description[:50]}"
-        )
+        return self.description[:100]
 
 
 # ============================================================
@@ -3386,6 +3470,813 @@ class ProjectProgressUpdate(models.Model):
             f"{self.project.project_code} - "
             f"{self.completion_percentage}%"
         )
+
+
+
+# ============================================================
+# PROJECT DOCUMENTS
+# ============================================================
+class ProjectDocument(models.Model):
+    CATEGORY_CHOICES = [
+        ("drawing", "Drawings"),
+        ("contract", "Contracts"),
+        ("permit", "Permits"),
+        ("boq", "Bill of Quantities"),
+        ("report", "Reports"),
+        ("certificate", "Certificates"),
+        ("invoice", "Invoices"),
+        ("schedule", "Schedules"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("under_review", "Under Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="project_documents",
+    )
+    title = models.CharField(max_length=255)
+    document_number = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default="other",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="draft",
+    )
+
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="uploaded_project_documents",
+    )
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_project_documents",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class ProjectDocumentVersion(models.Model):
+    document = models.ForeignKey(
+        ProjectDocument,
+        on_delete=models.CASCADE,
+        related_name="versions",
+    )
+
+    version_number = models.PositiveIntegerField()
+
+    # Cloudinary identifiers, not a local FileField.
+    cloudinary_public_id = models.CharField(
+        max_length=500,
+        unique=True,
+    )
+    cloudinary_resource_type = models.CharField(
+        max_length=20,
+        default="raw",
+    )
+    cloudinary_delivery_type = models.CharField(
+        max_length=30,
+        default="authenticated",
+    )
+    original_filename = models.CharField(max_length=255)
+    file_size = models.PositiveBigIntegerField(default=0)
+    file_format = models.CharField(max_length=20, blank=True)
+
+    change_notes = models.TextField(blank=True)
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-version_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document", "version_number"],
+                name="unique_project_document_version",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.document.title} v{self.version_number}"
+
+
+
+# ============================================================
+# PROJECT SCHEDULE ACTIVITY
+# ============================================================
+
+
+class ProjectScheduleActivity(models.Model):
+    STATUS_CHOICES = [
+        ("not_started", "Not Started"),
+        ("in_progress", "In Progress"),
+        ("on_hold", "On Hold"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="schedule_activities",
+    )
+    phase = models.ForeignKey(
+        "ProjectPhase",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="schedule_activities",
+    )
+    task = models.ForeignKey(
+        "ProjectTask",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="schedule_activities",
+    )
+    milestone = models.ForeignKey(
+        "ProjectMilestone",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="schedule_activities",
+    )
+    predecessor = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="successors",
+    )
+
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    start_date = models.DateField()
+    end_date = models.DateField()
+    actual_end_date = models.DateField(null=True, blank=True)
+    sequence = models.PositiveIntegerField(default=1)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="not_started",
+    )
+    completion_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100),
+        ],
+    )
+    is_critical = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sequence", "start_date", "id"]
+        indexes = [
+            models.Index(fields=["project", "start_date"]),
+            models.Index(fields=["project", "end_date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.project.name} - {self.name}"
+
+
+
+# ============================================================
+# PROCUREMENT MODELS    
+# ==========================================================
+
+
+class ProcurementSupplier(models.Model):
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="procurement_suppliers",
+    )
+    name = models.CharField(max_length=255)
+    contact_person = models.CharField(max_length=150, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    kra_pin = models.CharField(max_length=30, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class ProcurementMaterial(models.Model):
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="procurement_materials",
+    )
+    name = models.CharField(max_length=255)
+    sku = models.CharField(max_length=100)
+    unit = models.CharField(max_length=30, default="pcs")
+    category = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    estimated_unit_price = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "sku"],
+                name="unique_procurement_material_sku",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class ProcurementPurchaseOrder(models.Model):
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("pending", "Pending Approval"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("partially_received", "Partially Received"),
+        ("received", "Received"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.PROTECT,
+        related_name="procurement_orders",
+    )
+    supplier = models.ForeignKey(
+        ProcurementSupplier,
+        on_delete=models.PROTECT,
+        related_name="purchase_orders",
+    )
+    order_number = models.CharField(
+        max_length=80, unique=True, db_index=True
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="draft",
+    )
+    order_date = models.DateField()
+    expected_delivery_date = models.DateField(
+        null=True, blank=True
+    )
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_procurement_orders",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_procurement_orders",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def total_amount(self):
+        return sum(
+            (item.total_amount for item in self.items.all()),
+            Decimal("0.00"),
+        )
+
+
+class ProcurementOrderItem(models.Model):
+    order = models.ForeignKey(
+        ProcurementPurchaseOrder,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    material = models.ForeignKey(
+        ProcurementMaterial,
+        on_delete=models.PROTECT,
+    )
+    boq_item = models.ForeignKey(
+        "BOQItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="procurement_lines",
+    )
+    quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal("0.001"))],
+    )
+    unit_price = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    @property
+    def total_amount(self):
+        return self.quantity * self.unit_price
+
+
+class ProcurementDelivery(models.Model):
+    order = models.ForeignKey(
+        ProcurementPurchaseOrder,
+        on_delete=models.PROTECT,
+        related_name="deliveries",
+    )
+    delivery_number = models.CharField(
+        max_length=100, blank=True
+    )
+    delivery_date = models.DateField()
+    notes = models.TextField(blank=True)
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ProcurementDeliveryItem(models.Model):
+    delivery = models.ForeignKey(
+        ProcurementDelivery,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    order_item = models.ForeignKey(
+        ProcurementOrderItem,
+        on_delete=models.PROTECT,
+        related_name="received_items",
+    )
+    quantity_received = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal("0.001"))],
+    )
+
+
+class ProcurementMaterialIssue(models.Model):
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.PROTECT,
+        related_name="material_issues",
+    )
+    material = models.ForeignKey(
+        ProcurementMaterial,
+        on_delete=models.PROTECT,
+    )
+    quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal("0.001"))],
+    )
+    issued_to = models.CharField(max_length=255)
+    purpose = models.TextField(blank=True)
+    issue_date = models.DateField()
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+# ============================================================
+# WORKFORCE MODELS
+# ============================================================
+
+class WorkforceSubcontractor(models.Model):
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="workforce_subcontractors",
+    )
+    name = models.CharField(max_length=255)
+    contact_person = models.CharField(max_length=150, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    trade = models.CharField(max_length=100, blank=True)
+    address = models.TextField(blank=True)
+    kra_pin = models.CharField(max_length=30, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class WorkforceWorker(models.Model):
+    EMPLOYMENT_TYPES = [
+        ("casual", "Casual"),
+        ("contract", "Contract"),
+        ("permanent", "Permanent"),
+        ("subcontracted", "Subcontracted"),
+    ]
+
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="workforce_workers",
+    )
+    subcontractor = models.ForeignKey(
+        WorkforceSubcontractor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="workers",
+    )
+    worker_code = models.CharField(max_length=50)
+    full_name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=30, blank=True)
+    trade = models.CharField(max_length=100)
+    employment_type = models.CharField(
+        max_length=20,
+        choices=EMPLOYMENT_TYPES,
+        default="casual",
+    )
+    default_daily_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["full_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "worker_code"],
+                name="unique_workforce_worker_code",
+            )
+        ]
+
+    def __str__(self):
+        return self.full_name
+
+
+class WorkforceAssignment(models.Model):
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.PROTECT,
+        related_name="workforce_assignments",
+    )
+    worker = models.ForeignKey(
+        WorkforceWorker,
+        on_delete=models.PROTECT,
+        related_name="project_assignments",
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    daily_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "worker"],
+                condition=Q(is_active=True),
+                name="unique_active_workforce_assignment",
+            )
+        ]
+
+
+class WorkforceAttendance(models.Model):
+    STATUSES = [
+        ("present", "Present"),
+        ("half_day", "Half Day"),
+        ("absent", "Absent"),
+        ("leave", "On Leave"),
+    ]
+
+    assignment = models.ForeignKey(
+        WorkforceAssignment,
+        on_delete=models.PROTECT,
+        related_name="attendance_records",
+    )
+    date = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=STATUSES,
+    )
+    daily_rate_snapshot = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assignment", "date"],
+                name="unique_workforce_attendance_day",
+            )
+        ]
+
+    @property
+    def earned_amount(self):
+        factors = {
+            "present": Decimal("1"),
+            "half_day": Decimal("0.5"),
+            "absent": Decimal("0"),
+            "leave": Decimal("0"),
+        }
+        return (
+            self.daily_rate_snapshot *
+            factors.get(self.status, Decimal("0"))
+        )
+
+
+class WorkforceTask(models.Model):
+    STATUSES = [
+        ("pending", "Pending"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    assignment = models.ForeignKey(
+        WorkforceAssignment,
+        on_delete=models.PROTECT,
+        related_name="work_tasks",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUSES,
+        default="pending",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class WorkforcePayment(models.Model):
+    assignment = models.ForeignKey(
+        WorkforceAssignment,
+        on_delete=models.PROTECT,
+        related_name="payments",
+    )
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    payment_date = models.DateField()
+    payment_method = models.CharField(
+        max_length=30,
+        choices=[
+            ("cash", "Cash"),
+            ("mpesa", "M-Pesa"),
+            ("bank", "Bank Transfer"),
+        ],
+    )
+    reference = models.CharField(max_length=150, blank=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+# quality inspection
+
+class QualityInspection(models.Model):
+    STATUSES = [
+        ("draft", "Draft"),
+        ("in_progress", "In Progress"),
+        ("submitted", "Submitted"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="quality_inspections",
+    )
+    phase = models.ForeignKey(
+        "ProjectPhase",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=255)
+    inspection_number = models.CharField(
+        max_length=50, unique=True
+    )
+    location = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    scheduled_date = models.DateField()
+    inspected_date = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUSES,
+        default="draft",
+    )
+    inspector = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_quality_inspections",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_quality_inspections",
+    )
+    review_notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_quality_inspections",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class QualityChecklistItem(models.Model):
+    RESULTS = [
+        ("pending", "Pending"),
+        ("pass", "Pass"),
+        ("fail", "Fail"),
+        ("na", "Not Applicable"),
+    ]
+
+    inspection = models.ForeignKey(
+        QualityInspection,
+        on_delete=models.CASCADE,
+        related_name="checklist_items",
+    )
+    title = models.CharField(max_length=255)
+    result = models.CharField(
+        max_length=20,
+        choices=RESULTS,
+        default="pending",
+    )
+    remarks = models.TextField(blank=True)
+    sequence = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sequence", "id"]
+
+
+class QualityDefect(models.Model):
+    SEVERITIES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("critical", "Critical"),
+    ]
+    STATUSES = [
+        ("open", "Open"),
+        ("in_progress", "In Progress"),
+        ("resolved", "Resolved"),
+        ("verified", "Verified"),
+    ]
+
+    inspection = models.ForeignKey(
+        QualityInspection,
+        on_delete=models.CASCADE,
+        related_name="defects",
+    )
+    checklist_item = models.ForeignKey(
+        QualityChecklistItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    severity = models.CharField(
+        max_length=20,
+        choices=SEVERITIES,
+        default="medium",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUSES,
+        default="open",
+    )
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_quality_defects",
+    )
+    due_date = models.DateField(null=True, blank=True)
+    corrective_action = models.TextField(blank=True)
+    verification_notes = models.TextField(blank=True)
+    verified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verified_quality_defects",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class QualityEvidence(models.Model):
+    inspection = models.ForeignKey(
+        QualityInspection,
+        on_delete=models.CASCADE,
+        related_name="evidence",
+    )
+    defect = models.ForeignKey(
+        QualityDefect,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="evidence",
+    )
+    cloudinary_public_id = models.CharField(max_length=500)
+    resource_type = models.CharField(max_length=20, default="image")
+    file_url = models.URLField(max_length=1500)
+    caption = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 

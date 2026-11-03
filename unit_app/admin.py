@@ -114,6 +114,7 @@ from .models import (
     ProjectMilestone,
     ProjectTask,
     ProjectTaskDependency,
+    BOQSection,
     BOQItem,
     Contractor,
     ProjectContractor,
@@ -121,6 +122,44 @@ from .models import (
     SiteDiaryMedia,
     ProjectRisk,
     ProjectProgressUpdate,
+    ProjectBudget,
+    ProjectExpense,
+
+
+    # =====================================================
+    # PROJECT DOCUMENTS
+    # =====================================================
+    ProjectDocument,
+    ProjectDocumentVersion,
+
+    # =====================================================
+    # PROJECT SCHEDULE ACTIVITY
+    # =====================================================
+    ProjectScheduleActivity,
+    ProcurementSupplier,
+    ProcurementMaterial,
+    ProcurementPurchaseOrder,
+    ProcurementOrderItem,
+    ProcurementDelivery,
+    ProcurementDeliveryItem,
+
+    # =====================================================
+    # PROJECT  WORKFORCE
+    # =====================================================
+    WorkforceSubcontractor,
+    WorkforceWorker,
+    WorkforceAssignment,
+    WorkforceAttendance,
+    WorkforceTask,
+    WorkforcePayment,
+
+    # =====================================================
+    # QUALITY INSPECTION
+    # =====================================================
+    QualityInspection,
+    QualityChecklistItem,
+    QualityDefect,
+    QualityEvidence,
 )
 
 
@@ -262,6 +301,7 @@ admin.site.register(ProjectPhase)
 admin.site.register(ProjectMilestone)
 admin.site.register(ProjectTask)
 admin.site.register(ProjectTaskDependency)
+admin.site.register(BOQSection)
 admin.site.register(BOQItem)
 admin.site.register(Contractor)
 admin.site.register(ProjectContractor)
@@ -269,3 +309,42 @@ admin.site.register(SiteDiary)
 admin.site.register(SiteDiaryMedia)
 admin.site.register(ProjectRisk)
 admin.site.register(ProjectProgressUpdate)
+admin.site.register(ProjectBudget)
+admin.site.register(ProjectExpense)
+
+# ============================================================
+# PROJECT DOCUMENTS
+# ============================================================
+admin.site.register(ProjectDocument)
+admin.site.register(ProjectDocumentVersion)
+admin.site.register(ProjectScheduleActivity)
+
+
+# ============================================================
+# PROJECT PROCUREMENT
+# ============================================================
+admin.site.register(ProcurementSupplier)
+admin.site.register(ProcurementMaterial)
+admin.site.register(ProcurementPurchaseOrder)
+admin.site.register(ProcurementOrderItem)
+admin.site.register(ProcurementDelivery)
+admin.site.register(ProcurementDeliveryItem)
+
+# ============================================================
+# PROJECT  WORKFORCE
+# ============================================================
+admin.site.register(WorkforceSubcontractor)
+admin.site.register(WorkforceWorker)
+admin.site.register(WorkforceAssignment)
+admin.site.register(WorkforceAttendance)
+admin.site.register(WorkforceTask)
+admin.site.register(WorkforcePayment)
+
+
+# ============================================================
+# QUALITY INSPECTION
+# ============================================================
+admin.site.register(QualityInspection)
+admin.site.register(QualityChecklistItem)
+admin.site.register(QualityDefect)
+admin.site.register(QualityEvidence)

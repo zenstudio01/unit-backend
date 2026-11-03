@@ -825,6 +825,7 @@ def bulk_create_units(request):
         prefix,
         unit_type,
     ]):
+        print("Missing required fields.")
         return JsonResponse(
             {
                 "message":
@@ -895,6 +896,7 @@ def bulk_create_units(request):
         TypeError,
         InvalidOperation,
     ):
+        print("Invalid numeric values.")
         return JsonResponse(
             {
                 "message":
@@ -904,6 +906,7 @@ def bulk_create_units(request):
         )
 
     if start_number < 0:
+        print("Start number cannot be negative.")
         return JsonResponse(
             {
                 "message":
@@ -916,6 +919,7 @@ def bulk_create_units(request):
         number_of_units < 1
         or number_of_units > 200
     ):
+        print("You can create between 1 and 200 units at once.")
         return JsonResponse(
             {
                 "message":
@@ -927,7 +931,8 @@ def bulk_create_units(request):
     if (
         bedrooms < 0
         or bathrooms < 0
-    ):
+    ): 
+        print("Bedrooms and bathrooms cannot be negative.")
         return JsonResponse(
             {
                 "message":
@@ -937,6 +942,7 @@ def bulk_create_units(request):
         )
 
     if monthly_rent <= 0:
+        print("Monthly rent must be greater than zero.")
         return JsonResponse(
             {
                 "message":
@@ -1007,6 +1013,7 @@ def bulk_create_units(request):
         )
 
     except Building.DoesNotExist:
+        print("Building does not belong to this property.")
         return JsonResponse(
             {
                 "message":
@@ -1024,6 +1031,7 @@ def bulk_create_units(request):
         )
 
     except Floor.DoesNotExist:
+        print("Floor does not belong to this building.")
         return JsonResponse(
             {
                 "message":
@@ -1079,6 +1087,7 @@ def bulk_create_units(request):
     )
 
     if existing_codes:
+        print("Some generated unit codes already exist.")
         return JsonResponse(
             {
                 "message":
@@ -1105,6 +1114,7 @@ def bulk_create_units(request):
     if len(amenities) != len(
         set(amenity_ids)
     ):
+        print("One or more amenities are invalid.")
         return JsonResponse(
             {
                 "message":

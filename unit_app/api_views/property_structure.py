@@ -813,6 +813,7 @@ def create_amenity(request):
         or not name
         or not amenity_type
     ):
+        print("Organization, name and amenity type are required.")
         return JsonResponse(
             {
                 "message":
@@ -861,6 +862,7 @@ def create_amenity(request):
         )
         .exists()
     ):
+        print("This amenity already exists.")
         return JsonResponse(
             {
                 "message":

@@ -39,6 +39,15 @@ from .api_views.project_manager.project_manager_projects import *
 from .api_views.project_manager.project_manager_tasks import *
 from .api_views.project_manager.project_manager_site_diary import *
 from .api_views.project_manager.project_manager_profile import *
+from .api_views.project_manager.project_phases_milestones import *
+from .api_views.project_manager.project_boq import *
+from .api_views.project_manager.project_budget import *
+from .api_views.project_manager.project_documents import *
+from .api_views.project_manager.project_schedule import *
+from .api_views.project_manager.project_procurement import *
+from .api_views.project_manager.project_workforce import *
+from .api_views.project_manager.project_quality import *
+
 
 
 
@@ -292,6 +301,83 @@ urlpatterns = [
     # profile
     path("project-manager/profile/", project_manager_profile, name="project-manager-profile"),
     path("project-manager/profile/change-password/", project_manager_change_password, name="project-manager-change-password"),
+
+    # project phases and milestones
+    path("project-manager/planning/projects/", project_planning_projects, name="project-planning-projects"),
+    path("project-manager/phases/", project_phases, name="project-manager-phases"),
+    path("project-manager/phases/<int:phase_id>/", project_phase_detail, name="project-manager-phase-detail"),
+    path("project-manager/milestones/", project_milestones, name="project-manager-milestones"),
+    path("project-manager/milestones/<int:milestone_id>/", project_milestone_detail, name="project-manager-milestone-detail"),
+    path("project-manager/planning/summary/",project_planning_summary, name="project-planning-summary"),
+
+    # project BOQ
+    path("project-manager/boq/sections/", boq_sections, name="project-manager-boq-sections"),
+    path("project-manager/boq/sections/<int:section_id>/", boq_section_detail, name="project-manager-boq-section-detail"),
+    path("project-manager/boq/items/", boq_items, name="project-manager-boq-items"),
+    path("project-manager/boq/items/<int:item_id>/", boq_item_detail, name="project-manager-boq-item-detail"),
+    path("project-manager/boq/summary/", boq_summary, name="project-manager-boq-summary"),
+
+    # project budget and expenses
+    path("project-manager/budgets/", project_budgets, name="project-manager-budgets"),
+    path("project-manager/budgets/<int:budget_id>/", project_budget_detail, name="project-manager-budget-detail"),
+    path("project-manager/expenses/", project_expenses, name="project-manager-expenses"),
+    path("project-manager/expenses/<int:expense_id>/", project_expense_detail, name="project-manager-expense-detail"),
+    path("project-manager/expenses/<int:expense_id>/status/", project_expense_status, name="project-manager-expense-status"),
+    path("project-manager/financial-summary/", project_financial_summary, name="project-manager-financial-summary"),
+
+
+
+    # project documents
+    path("project-manager/documents/", project_documents, name="project-manager-documents"),
+    path("project-manager/documents/summary/", project_document_summary, name="project-manager-document-summary"),
+    path("project-manager/documents/<int:document_id>/", project_document_detail, name="project-manager-document-detail"),
+    path("project-manager/documents/<int:document_id>/versions/", project_document_versions, name="project-manager-document-versions"),
+    path("project-manager/documents/<int:document_id>/review/", project_document_review, name="project-manager-document-review"),
+    path("project-manager/documents/<int:document_id>/versions/<int:version_id>/download/", project_document_download, name="project-manager-document-download"),
+
+
+    # project schedule activities
+    path("project-manager/schedules/activities/", schedule_activities, name="project-manager-schedule-activities"),
+    path("project-manager/schedules/activities/<int:activity_id>/", schedule_activity_detail, name="project-manager-schedule-activity-detail"),
+    path("project-manager/schedules/gantt/", schedule_gantt, name="project-manager-schedule-gantt"),
+    path("project-manager/schedules/summary/", schedule_summary, name="project-manager-schedule-summary"),
+
+
+    # project procurement
+    path("project-manager/procurement/suppliers/", procurement_suppliers),
+    path("project-manager/procurement/materials/", procurement_materials),
+    path("project-manager/procurement/orders/", procurement_orders),
+    path("project-manager/procurement/orders/<int:order_id>/", procurement_order_detail),
+    path("project-manager/procurement/orders/<int:order_id>/status/", procurement_order_status),
+    path("project-manager/procurement/deliveries/", procurement_deliveries),
+    path("project-manager/procurement/issues/", procurement_issues),
+    path("project-manager/procurement/inventory/", procurement_inventory),
+    path("project-manager/procurement/summary/", procurement_summary),
+
+
+    # project workforce
+    path("project-manager/workforce/subcontractors/", workforce_subcontractors),
+    path("project-manager/workforce/workers/", workforce_workers),
+    path("project-manager/workforce/assignments/", workforce_assignments),
+    path("project-manager/workforce/assignments/<int:assignment_id>/", workforce_assignment_detail),
+    path("project-manager/workforce/attendance/", workforce_attendance),
+    path("project-manager/workforce/tasks/", workforce_tasks),
+    path("project-manager/workforce/tasks/<int:task_id>/", workforce_task_detail),
+    path("project-manager/workforce/payments/", workforce_payments),
+    path("project-manager/workforce/payroll/", workforce_payroll),
+    path("project-manager/workforce/summary/", workforce_summary),
+
+
+    # project quality inspection
+    path("project-manager/quality/inspections/", quality_inspections),
+    path("project-manager/quality/summary/", quality_summary),
+    path("project-manager/quality/inspections/<int:inspection_id>/", quality_inspection_detail),
+    path("project-manager/quality/inspections/<int:inspection_id>/status/", quality_inspection_status),
+    path("project-manager/quality/inspections/<int:inspection_id>/checklists/", quality_checklists),
+    path("project-manager/quality/checklists/<int:checklist_id>/", quality_checklist_detail),
+    path("project-manager/quality/inspections/<int:inspection_id>/defects/", quality_defects),
+    path("project-manager/quality/defects/<int:defect_id>/status/", quality_defect_status),
+    path("project-manager/quality/inspections/<int:inspection_id>/evidence/", quality_upload_evidence),
 
 
 
