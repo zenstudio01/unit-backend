@@ -1,5 +1,10 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
+
+
 from . import views
+
+
 from .api_views.auth import *
 from .api_views.profile import *
 from .api_views.organization import *
@@ -47,6 +52,18 @@ from .api_views.project_manager.project_schedule import *
 from .api_views.project_manager.project_procurement import *
 from .api_views.project_manager.project_workforce import *
 from .api_views.project_manager.project_quality import *
+
+
+
+# unit app admin
+from .api_views.platform_admin.admin_dashboard import *
+from .api_views.platform_admin.admin_auth import *
+from .api_views.platform_admin.admin_organizations import *
+from .api_views.platform_admin.admin_users import *
+from .api_views.platform_admin.admin_properties import *
+from .api_views.platform_admin.admin_construction_projects import *
+from .api_views.platform_admin.admin_subscriptions import *
+from .api_views.platform_admin.admin_payments import *
 
 
 
@@ -378,6 +395,57 @@ urlpatterns = [
     path("project-manager/quality/inspections/<int:inspection_id>/defects/", quality_defects),
     path("project-manager/quality/defects/<int:defect_id>/status/", quality_defect_status),
     path("project-manager/quality/inspections/<int:inspection_id>/evidence/", quality_upload_evidence),
+
+
+
+
+    # admin
+    path("admin/dashboard/", admin_dashboard, name='admin_dashboard'),
+
+    # admin auth
+    path("admin/signin/", admin_signin, name="admin-signin"),
+    path("admin/me/", admin_me, name="admin-me"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+
+    # organizations
+    path("admin/organizations/", admin_organizations),
+    path("admin/organizations/stats/", admin_organization_stats),
+    path("admin/organizations/<int:organization_id>/", admin_organization_detail),
+    path("admin/organizations/<int:organization_id>/verification/", admin_organization_verification),
+
+
+    # users
+    path("admin/users/", admin_users, name="admin-users"),
+    path("admin/users/stats/", admin_user_stats, name="admin-user-stats"),
+    path("admin/users/<int:user_id>/", admin_user_detail, name="admin-user-detail"),
+    
+    # properties
+    path("admin/properties/", admin_properties, name="admin-properties"),
+    path("admin/properties/stats/", admin_property_stats, name="admin-property-stats"),
+    path("admin/properties/<int:property_id>/", admin_property_detail, name="admin-property-detail"),
+
+
+    # construction projects
+    path("admin/construction-projects/", admin_construction_projects),
+    path("admin/construction-projects/stats/", admin_construction_project_stats),
+    path("admin/construction-projects/<int:project_id>/", admin_construction_project_detail),
+
+
+    # subscriptions
+    path("admin/subscriptions/", admin_subscriptions),
+    path("admin/subscriptions/stats/", admin_subscription_stats),
+    path("admin/subscriptions/packages/", admin_subscription_packages),
+    path("admin/subscriptions/packages/<int:package_id>/", admin_subscription_package_detail),
+    path("admin/subscriptions/payments/", admin_subscription_payments),
+    path("admin/subscriptions/<int:subscription_id>/", admin_subscription_detail),
+
+
+    # payments
+    path("admin/payments/", admin_payments),
+    path("admin/payments/stats/", admin_payment_stats),
+    path("admin/payments/subscriptions/", admin_subscription_transactions),
+    path("admin/payments/reconciliations/", admin_payment_reconciliations),
+    path("admin/payments/<int:payment_id>/", admin_payment_detail),
 
 
 
