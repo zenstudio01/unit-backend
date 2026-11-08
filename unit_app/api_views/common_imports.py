@@ -204,6 +204,9 @@ from unit_app.models import (
     QualityChecklistItem as Checklist,
     QualityDefect as Defect,
     QualityEvidence as Evidence,
+
+
+    PlatformSetting,
 )
 
 # =========================

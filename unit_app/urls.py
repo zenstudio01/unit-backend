@@ -64,6 +64,10 @@ from .api_views.platform_admin.admin_properties import *
 from .api_views.platform_admin.admin_construction_projects import *
 from .api_views.platform_admin.admin_subscriptions import *
 from .api_views.platform_admin.admin_payments import *
+from .api_views.platform_admin.admin_maintenance import *
+from .api_views.platform_admin.admin_tenants import *
+from .api_views.platform_admin.admin_reports import *
+from .api_views.platform_admin.admin_settings import *
 
 
 
@@ -446,6 +450,32 @@ urlpatterns = [
     path("admin/payments/subscriptions/", admin_subscription_transactions),
     path("admin/payments/reconciliations/", admin_payment_reconciliations),
     path("admin/payments/<int:payment_id>/", admin_payment_detail),
+
+    # maintenance
+    path("admin/maintenance/", admin_maintenance_tickets),
+    path("admin/maintenance/stats/", admin_maintenance_stats),
+    path("admin/maintenance/<int:ticket_id>/", admin_maintenance_detail),
+
+
+    # tenants
+    path("admin/tenants/", admin_tenants),
+    path("admin/tenants/stats/", admin_tenant_stats),
+    path("admin/tenants/leases/", admin_tenant_leases),
+    path("admin/tenants/<int:tenant_id>/", admin_tenant_detail),
+
+    # reports
+    path("admin/reports/overview/", admin_reports_overview),
+    path("admin/reports/revenue/", admin_reports_revenue),
+    path("admin/reports/occupancy/", admin_reports_occupancy),
+    path("admin/reports/maintenance/", admin_reports_maintenance),
+    path("admin/reports/construction/", admin_reports_construction),
+    path("admin/reports/subscriptions/", admin_reports_subscriptions),
+
+
+    # settings
+    path("admin/settings/", admin_platform_settings),
+    path("admin/settings/profile/", admin_settings_profile),
+    path("admin/settings/change-password/", admin_settings_change_password),
 
 
 

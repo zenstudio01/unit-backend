@@ -4281,3 +4281,35 @@ class QualityEvidence(models.Model):
 
 
 
+class PlatformSetting(models.Model):
+    """
+    Singleton platform configuration.
+    Only one record (pk=1) is used.
+    """
+
+    id = models.PositiveSmallIntegerField(
+        primary_key=True,
+        default=1,
+        editable=False,
+    )
+
+    general = models.JSONField(default=dict, blank=True)
+    branding = models.JSONField(default=dict, blank=True)
+    subscriptions = models.JSONField(default=dict, blank=True)
+    payments = models.JSONField(default=dict, blank=True)
+    notifications = models.JSONField(default=dict, blank=True)
+    security = models.JSONField(default=dict, blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return "UNIT Platform Settings"
+
+
+
+
+

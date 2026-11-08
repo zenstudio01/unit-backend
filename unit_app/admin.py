@@ -160,6 +160,9 @@ from .models import (
     QualityChecklistItem,
     QualityDefect,
     QualityEvidence,
+
+    # platform
+    PlatformSetting,
 )
 
 
@@ -348,3 +351,9 @@ admin.site.register(QualityInspection)
 admin.site.register(QualityChecklistItem)
 admin.site.register(QualityDefect)
 admin.site.register(QualityEvidence)
+
+
+# ==========================================================
+# PLATFORM
+# ==========================================================
+admin.site.register(PlatformSetting)
