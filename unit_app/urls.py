@@ -52,6 +52,11 @@ from .api_views.project_manager.project_schedule import *
 from .api_views.project_manager.project_procurement import *
 from .api_views.project_manager.project_workforce import *
 from .api_views.project_manager.project_quality import *
+from .api_views.project_manager.project_stakeholders import *
+from .api_views.project_manager.project_risk_issues import *
+from .api_views.project_manager.project_handover import *
+from .api_views.project_manager.off_plan_portal import *
+from .api_views.project_manager.off_plan_sales import *
 
 
 
@@ -399,6 +404,56 @@ urlpatterns = [
     path("project-manager/quality/inspections/<int:inspection_id>/defects/", quality_defects),
     path("project-manager/quality/defects/<int:defect_id>/status/", quality_defect_status),
     path("project-manager/quality/inspections/<int:inspection_id>/evidence/", quality_upload_evidence),
+
+    # project stakeholders
+    path("projects/<int:project_id>/stakeholders/", project_stakeholders),
+    path("projects/<int:project_id>/stakeholders/stats/", project_stakeholder_stats),
+    path("projects/<int:project_id>/stakeholders/<int:stakeholder_id>/", project_stakeholder_detail),
+
+    # project risks and issues
+    path("projects/<int:project_id>/risk-issues/", project_risk_issues),
+    path("projects/<int:project_id>/risk-issues/stats/", project_risk_issue_stats),
+    path("projects/<int:project_id>/risk-issues/options/", project_risk_issue_options),
+    path("projects/<int:project_id>/risk-issues/<int:item_id>/", project_risk_issue_detail),
+
+    # project handover
+    path("projects/<int:project_id>/handover/", handover_overview),
+    path("projects/<int:project_id>/handover/options/", handover_options),
+    path("projects/<int:project_id>/handover/readiness/", handover_readiness),
+    path("projects/<int:project_id>/handover/checklist/", checklist_collection),
+    path("projects/<int:project_id>/handover/checklist/<int:item_id>/", checklist_detail),
+    path("projects/<int:project_id>/handover/documents/", document_collection),
+    path("projects/<int:project_id>/handover/documents/<int:link_id>/", document_detail),
+    path("projects/<int:project_id>/handover/inspections/", inspection_collection),
+    path("projects/<int:project_id>/handover/inspections/<int:link_id>/", inspection_detail),
+    path("projects/<int:project_id>/handover/submit/", submit_for_review),
+    path("projects/<int:project_id>/handover/acceptances/", acceptance_collection),
+    path("projects/<int:project_id>/handover/reopen/", reopen_handover),
+    path("projects/<int:project_id>/handover/finalize/", finalize_handover),
+
+    # project off sale plans
+    path('projects/<int:project_id>/off-plan/dashboard/', dashboard),
+    path('projects/<int:project_id>/off-plan/reservations/', reservations),
+    path('projects/<int:project_id>/off-plan/reservations/<int:pk>/', reservation_detail),
+    path('projects/<int:project_id>/off-plan/sales/', sales),
+    path('projects/<int:project_id>/off-plan/sales/<int:pk>/', sale_detail),
+    path('projects/<int:project_id>/off-plan/installments/', installments),
+    path('projects/<int:project_id>/off-plan/installments/<int:pk>/', installment_detail),
+    path('projects/<int:project_id>/off-plan/payments/', payments),
+    path('projects/<int:project_id>/off-plan/payments/<int:pk>/confirm/', confirm_payment),
+    path('projects/<int:project_id>/off-plan/payments/<int:pk>/allocate/', allocate_payment),
+    path('projects/<int:project_id>/off-plan/handovers/', handovers),
+    path('projects/<int:project_id>/off-plan/handovers/<int:pk>/', handover_detail),
+    path('projects/<int:project_id>/off-plan/<str:resource>/', collection),
+    path('projects/<int:project_id>/off-plan/<str:resource>/<int:pk>/', detail),
+    path('buyer/off-plan/dashboard/', dashboard),
+    path('buyer/off-plan/reservations/', reservations),
+    path('buyer/off-plan/purchases/', purchases),
+    path('buyer/off-plan/purchases/<int:sale_id>/', purchase_detail),
+    path('buyer/off-plan/installments/', installments),
+    path('buyer/off-plan/payments/', payments),
+    path('buyer/off-plan/handovers/', handovers),
+    path('buyer/off-plan/handovers/<int:handover_id>/accept/', accept_handover),
 
 
 

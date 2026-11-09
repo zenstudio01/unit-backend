@@ -163,6 +163,27 @@ from .models import (
 
     # platform
     PlatformSetting,
+
+    ProjectStakeholder,
+
+    ProjectRiskIssue,
+
+    ProjectHandover, 
+    HandoverChecklistItem,
+    HandoverDocument,
+    HandoverInspection,
+    HandoverAcceptance,
+
+    OffPlanUnit,
+    OffPlanBuyer,
+    OffPlanLead,
+    OffPlanReservation,
+    OffPlanSale,
+    OffPlanInstallment,
+    OffPlanPayment,
+    OffPlanPaymentAllocation,
+    OffPlanCommission,
+    OffPlanUnitHandover,
 )
 
 
@@ -357,3 +378,29 @@ admin.site.register(QualityEvidence)
 # PLATFORM
 # ==========================================================
 admin.site.register(PlatformSetting)
+
+
+admin.site.register(ProjectStakeholder)
+
+
+admin.site.register(ProjectRiskIssue)
+
+
+admin.site.register(ProjectHandover)
+admin.site.register(HandoverChecklistItem)
+admin.site.register(HandoverDocument)
+admin.site.register(HandoverInspection)
+admin.site.register(HandoverAcceptance)
+    
+
+
+admin.site.register(OffPlanUnit)
+admin.site.register(OffPlanBuyer)
+admin.site.register(OffPlanLead)
+admin.site.register(OffPlanReservation)
+admin.site.register(OffPlanSale)
+admin.site.register(OffPlanInstallment)
+admin.site.register(OffPlanPayment)
+admin.site.register(OffPlanPaymentAllocation)
+admin.site.register(OffPlanCommission)
+admin.site.register(OffPlanUnitHandover)

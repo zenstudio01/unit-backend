@@ -13,6 +13,9 @@ from decimal import Decimal
 from django.db import models
 from django.db.models import Q
 
+
+from django.core.exceptions import ValidationError
+
 from django.core.validators import FileExtensionValidator
 
 from django.core.validators import (
@@ -4312,4 +4315,764 @@ class PlatformSetting(models.Model):
 
 
 
+
+class ProjectStakeholder(models.Model):
+    ROLE_CHOICES = [
+        ("client", "Client / Project Owner"),
+        ("project_manager", "Project Manager"),
+        ("architect", "Architect"),
+        ("engineer", "Engineer"),
+        ("quantity_surveyor", "Quantity Surveyor"),
+        ("contractor", "Contractor"),
+        ("subcontractor", "Subcontractor"),
+        ("consultant", "Consultant"),
+        ("supplier", "Supplier"),
+        ("investor", "Investor"),
+        ("government", "Government / Regulator"),
+        ("community", "Community Representative"),
+        ("other", "Other"),
+    ]
+
+    TYPE_CHOICES = [
+        ("internal", "Internal"),
+        ("external", "External"),
+    ]
+
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="stakeholders",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="project_stakeholders",
+    )
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_stakeholder_records",
+    )
+
+    name = models.CharField(max_length=255)
+    company = models.CharField(max_length=255, blank=True)
+    role = models.CharField(
+        max_length=40,
+        choices=ROLE_CHOICES,
+        default="other",
+    )
+    stakeholder_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default="external",
+    )
+    email = models.EmailField(blank=True)
+    phone_number = models.CharField(max_length=30, blank=True)
+    responsibilities = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="active",
+    )
+    is_primary_contact = models.BooleanField(default=False)
+
+    created_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_project_stakeholders",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+        indexes = [
+            models.Index(fields=["project", "status"]),
+            models.Index(fields=["organization", "role"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.project.name}"
+
+
+
+
+
+class ProjectRiskIssue(models.Model):
+    TYPE_CHOICES = [
+        ("risk", "Risk"),
+        ("issue", "Issue"),
+    ]
+
+    CATEGORY_CHOICES = [
+        ("safety", "Health & Safety"),
+        ("financial", "Financial"),
+        ("schedule", "Schedule"),
+        ("technical", "Technical"),
+        ("quality", "Quality"),
+        ("environmental", "Environmental"),
+        ("legal", "Legal & Compliance"),
+        ("procurement", "Procurement"),
+        ("workforce", "Workforce"),
+        ("stakeholder", "Stakeholder"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("monitoring", "Monitoring"),
+        ("in_progress", "In Progress"),
+        ("mitigated", "Mitigated"),
+        ("resolved", "Resolved"),
+        ("closed", "Closed"),
+    ]
+
+    project = models.ForeignKey(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="risk_issues",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="project_risk_issues",
+    )
+    stakeholder = models.ForeignKey(
+        "ProjectStakeholder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_risk_issues",
+    )
+
+    reference = models.CharField(
+        max_length=50,
+        unique=True,
+        editable=False,
+    )
+    item_type = models.CharField(
+        max_length=10,
+        choices=TYPE_CHOICES,
+        default="risk",
+    )
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default="other",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    likelihood = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
+    )
+    impact = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
+    )
+    mitigation_plan = models.TextField(blank=True)
+    resolution_notes = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="open",
+    )
+    target_date = models.DateField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_project_risk_issues",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["project", "item_type", "status"]),
+            models.Index(fields=["organization", "created_at"]),
+        ]
+
+    @property
+    def risk_score(self):
+        return self.likelihood * self.impact
+
+    @property
+    def severity(self):
+        if self.risk_score >= 15:
+            return "high"
+        if self.risk_score >= 8:
+            return "medium"
+        return "low"
+
+    def __str__(self):
+        return f"{self.reference} - {self.title}"
+
+
+
+
+
+
+# ============================================================
+# PROJECT HANDOVER
+# ============================================================
+
+class ProjectHandover(models.Model):
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("in_progress", "In Progress"),
+        ("ready_for_review", "Ready for Review"),
+        ("accepted", "Client Accepted"),
+        ("handed_over", "Handed Over"),
+        ("rejected", "Rejected"),
+    ]
+
+    project = models.OneToOneField(
+        "ConstructionProject",
+        on_delete=models.CASCADE,
+        related_name="handover",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="project_handovers",
+    )
+
+    client = models.ForeignKey(
+        "ProjectStakeholder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="client_handovers",
+    )
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="draft",
+        db_index=True,
+    )
+
+    target_handover_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+    actual_handover_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    review_notes = models.TextField(blank=True)
+    handover_notes = models.TextField(blank=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_project_handovers",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.project.name} - {self.status}"
+
+
+# ============================================================
+# HANDOVER CHECKLIST
+# ============================================================
+
+class HandoverChecklistItem(models.Model):
+    CATEGORY_CHOICES = [
+        ("construction", "Construction Completion"),
+        ("inspection", "Final Inspections"),
+        ("documentation", "Documentation"),
+        ("safety", "Safety & Compliance"),
+        ("utilities", "Utilities & Services"),
+        ("keys", "Keys & Access"),
+        ("training", "Client Training"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("not_applicable", "Not Applicable"),
+    ]
+
+    handover = models.ForeignKey(
+        "ProjectHandover",
+        on_delete=models.CASCADE,
+        related_name="checklist_items",
+    )
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default="other",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_handover_items",
+    )
+
+    due_date = models.DateField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="completed_handover_items",
+    )
+
+    notes = models.TextField(blank=True)
+    sequence = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sequence", "id"]
+
+    def __str__(self):
+        return self.title
+
+
+# ============================================================
+# HANDOVER DOCUMENT REFERENCES
+# ============================================================
+
+class HandoverDocument(models.Model):
+    CATEGORY_CHOICES = [
+        ("completion_certificate", "Completion Certificate"),
+        ("occupancy_certificate", "Occupancy Certificate"),
+        ("as_built_drawing", "As-Built Drawing"),
+        ("warranty", "Warranty"),
+        ("manual", "Operation & Maintenance Manual"),
+        ("inspection_report", "Inspection Report"),
+        ("compliance", "Compliance Document"),
+        ("other", "Other"),
+    ]
+
+    handover = models.ForeignKey(
+        "ProjectHandover",
+        on_delete=models.CASCADE,
+        related_name="handover_documents",
+    )
+
+    # Reuse the existing project document storage/version system.
+    document = models.ForeignKey(
+        "ProjectDocument",
+        on_delete=models.PROTECT,
+        related_name="handover_references",
+    )
+
+    category = models.CharField(
+        max_length=40,
+        choices=CATEGORY_CHOICES,
+        default="other",
+    )
+
+    is_required = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["handover", "document"],
+                name="unique_handover_document",
+            ),
+        ]
+
+    def __str__(self):
+        return self.document.title
+
+
+# ============================================================
+# HANDOVER INSPECTION REFERENCES
+# ============================================================
+
+class HandoverInspection(models.Model):
+    handover = models.ForeignKey(
+        "ProjectHandover",
+        on_delete=models.CASCADE,
+        related_name="handover_inspections",
+    )
+
+    inspection = models.ForeignKey(
+        "QualityInspection",
+        on_delete=models.PROTECT,
+        related_name="handover_references",
+    )
+
+    is_required = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["handover", "inspection"],
+                name="unique_handover_inspection",
+            ),
+        ]
+
+
+# ============================================================
+# CLIENT ACCEPTANCE HISTORY
+# ============================================================
+
+class HandoverAcceptance(models.Model):
+    DECISION_CHOICES = [
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("changes_requested", "Changes Requested"),
+    ]
+
+    handover = models.ForeignKey(
+        "ProjectHandover",
+        on_delete=models.CASCADE,
+        related_name="acceptance_records",
+    )
+
+    client = models.ForeignKey(
+        "ProjectStakeholder",
+        on_delete=models.PROTECT,
+        related_name="handover_acceptances",
+    )
+
+    decision = models.CharField(
+        max_length=30,
+        choices=DECISION_CHOICES,
+    )
+
+    comments = models.TextField(blank=True)
+
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="recorded_handover_acceptances",
+    )
+
+    decided_at = models.DateTimeField(
+        default=timezone.now,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-decided_at", "-id"]
+
+    def __str__(self):
+        return f"{self.client.name} - {self.decision}"
+
+
+
+
+MONEY_ZERO = Decimal('0.00')
+
+
+class OffPlanUnit(models.Model):
+    STATUS = [('available','Available'),('reserved','Reserved'),('under_contract','Under Contract'),('sold','Sold'),('handed_over','Handed Over'),('withdrawn','Withdrawn')]
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='offplan_units')
+    project = models.ForeignKey('ConstructionProject', on_delete=models.CASCADE, related_name='offplan_units')
+    unit = models.OneToOneField('Unit', on_delete=models.PROTECT, related_name='offplan_listing')
+    listing_price = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(MONEY_ZERO)])
+    currency = models.CharField(max_length=3, default='KES')
+    minimum_booking_amount = models.DecimalField(max_digits=16, decimal_places=2, default=MONEY_ZERO, validators=[MinValueValidator(MONEY_ZERO)])
+    construction_progress = models.DecimalField(max_digits=5, decimal_places=2, default=MONEY_ZERO, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    expected_completion_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=24, choices=STATUS, default='available', db_index=True)
+    is_published = models.BooleanField(default=False)
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_offplan_units')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        errors = {}
+        if self.project_id and self.organization_id and self.project.organization_id != self.organization_id:
+            errors['organization'] = 'Organization must match the project.'
+        if self.unit_id and self.project_id:
+            if not self.project.property_id:
+                errors['project'] = 'Link the construction project to a property first.'
+            elif self.unit.property_id != self.project.property_id:
+                errors['unit'] = 'Unit must belong to the project property.'
+        if self.minimum_booking_amount is not None and self.listing_price is not None and self.minimum_booking_amount > self.listing_price:
+            errors['minimum_booking_amount'] = 'Booking amount cannot exceed listing price.'
+        if errors: raise ValidationError(errors)
+
+    def __str__(self): return f'{self.project.project_code} - {self.unit.unit_code}'
+
+
+class OffPlanBuyer(models.Model):
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='offplan_buyers')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='offplan_buyer_profiles')
+    full_name = models.CharField(max_length=255)
+    email = models.EmailField(blank=True)
+    phone_number = models.CharField(max_length=30)
+    id_number = models.CharField(max_length=100, blank=True)
+    kra_pin = models.CharField(max_length=50, blank=True)
+    address = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_offplan_buyers')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['organization','user'], condition=Q(user__isnull=False), name='offplan_unique_org_buyer_user')]
+
+    def __str__(self): return self.full_name
+
+
+class OffPlanLead(models.Model):
+    STATUS = [('new','New'),('contacted','Contacted'),('qualified','Qualified'),('viewing','Viewing'),('negotiating','Negotiating'),('converted','Converted'),('lost','Lost')]
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='offplan_leads')
+    project = models.ForeignKey('ConstructionProject', on_delete=models.CASCADE, related_name='offplan_leads')
+    offplan_unit = models.ForeignKey('OffPlanUnit', null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
+    buyer = models.ForeignKey('OffPlanBuyer', null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
+    contact_name = models.CharField(max_length=255)
+    contact_phone = models.CharField(max_length=30)
+    contact_email = models.EmailField(blank=True)
+    source = models.CharField(max_length=80, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='new')
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='assigned_offplan_leads')
+    next_follow_up = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        errors = {}
+        if self.project_id and self.organization_id and self.project.organization_id != self.organization_id: errors['organization'] = 'Organization must match project.'
+        if self.offplan_unit_id and self.project_id and self.offplan_unit.project_id != self.project_id: errors['offplan_unit'] = 'Unit must belong to project.'
+        if self.buyer_id and self.organization_id and self.buyer.organization_id != self.organization_id: errors['buyer'] = 'Buyer must belong to organization.'
+        if errors: raise ValidationError(errors)
+
+
+class OffPlanReservation(models.Model):
+    STATUS = [('pending','Pending'),('confirmed','Confirmed'),('converted','Converted to Sale'),('expired','Expired'),('cancelled','Cancelled')]
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='offplan_reservations')
+    offplan_unit = models.ForeignKey('OffPlanUnit', on_delete=models.PROTECT, related_name='reservations')
+    buyer = models.ForeignKey('OffPlanBuyer', on_delete=models.PROTECT, related_name='reservations')
+    reservation_reference = models.CharField(max_length=100, unique=True)
+    agreed_price = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    booking_amount_due = models.DecimalField(max_digits=16, decimal_places=2, default=MONEY_ZERO, validators=[MinValueValidator(MONEY_ZERO)])
+    expires_at = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=STATUS, default='pending', db_index=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_offplan_reservations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['offplan_unit'], condition=Q(status__in=['pending','confirmed']), name='offplan_one_active_reservation_per_unit')]
+
+    def clean(self):
+        errors = {}
+        if self.offplan_unit_id and self.organization_id and self.offplan_unit.organization_id != self.organization_id: errors['offplan_unit'] = 'Unit belongs to another organization.'
+        if self.buyer_id and self.organization_id and self.buyer.organization_id != self.organization_id: errors['buyer'] = 'Buyer belongs to another organization.'
+        if self.expires_at and self._state.adding and self.expires_at <= timezone.now(): errors['expires_at'] = 'Expiry must be in the future.'
+        if errors: raise ValidationError(errors)
+
+    def __str__(self): return self.reservation_reference
+
+
+class OffPlanSale(models.Model):
+    STATUS = [('draft','Draft'),('contract_pending','Contract Pending'),('active','Active'),('paid','Fully Paid'),('completed','Completed'),('cancelled','Cancelled'),('defaulted','Defaulted')]
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='offplan_sales')
+    offplan_unit = models.ForeignKey('OffPlanUnit', on_delete=models.PROTECT, related_name='sales')
+    buyer = models.ForeignKey('OffPlanBuyer', on_delete=models.PROTECT, related_name='sales')
+    reservation = models.OneToOneField('OffPlanReservation', null=True, blank=True, on_delete=models.PROTECT, related_name='sale')
+    sale_reference = models.CharField(max_length=100, unique=True)
+    sale_price = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    currency = models.CharField(max_length=3, default='KES')
+    deposit_required = models.DecimalField(max_digits=16, decimal_places=2, default=MONEY_ZERO, validators=[MinValueValidator(MONEY_ZERO)])
+    contract_date = models.DateField(null=True, blank=True)
+    agreement_url = models.URLField(blank=True)
+    agreement_public_id = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='draft', db_index=True)
+    sales_agent = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='offplan_agent_sales')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_offplan_sales')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['offplan_unit'], condition=Q(status__in=['draft','contract_pending','active','paid','completed']), name='offplan_one_live_sale_per_unit')]
+
+    def clean(self):
+        errors = {}
+        if self.offplan_unit_id and self.organization_id and self.offplan_unit.organization_id != self.organization_id: errors['offplan_unit'] = 'Unit belongs to another organization.'
+        if self.buyer_id and self.organization_id and self.buyer.organization_id != self.organization_id: errors['buyer'] = 'Buyer belongs to another organization.'
+        if self.reservation_id and self.offplan_unit_id and self.reservation.offplan_unit_id != self.offplan_unit_id: errors['reservation'] = 'Reservation is for another unit.'
+        if self.reservation_id and self.buyer_id and self.reservation.buyer_id != self.buyer_id: errors['buyer'] = 'Buyer differs from reservation buyer.'
+        if self.deposit_required is not None and self.sale_price is not None and self.deposit_required > self.sale_price: errors['deposit_required'] = 'Deposit cannot exceed sale price.'
+        if errors: raise ValidationError(errors)
+
+    @property
+    def confirmed_total(self):
+        from django.db.models import Sum
+        return self.payments.filter(status='confirmed').aggregate(total=Sum('amount'))['total'] or MONEY_ZERO
+
+    @property
+    def outstanding_balance(self): return max(MONEY_ZERO, self.sale_price - self.confirmed_total)
+
+    def __str__(self): return self.sale_reference
+
+
+class OffPlanInstallment(models.Model):
+    STATUS = [('pending','Pending'),('partially_paid','Partially Paid'),('paid','Paid'),('overdue','Overdue'),('waived','Waived')]
+    sale = models.ForeignKey('OffPlanSale', on_delete=models.PROTECT, related_name='installments')
+    installment_number = models.PositiveIntegerField()
+    description = models.CharField(max_length=255, blank=True)
+    due_date = models.DateField()
+    amount_due = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['installment_number']
+        constraints = [models.UniqueConstraint(fields=['sale','installment_number'], name='offplan_unique_sale_installment')]
+
+    @property
+    def amount_paid(self):
+        from django.db.models import Sum
+        return self.allocations.filter(payment__status='confirmed').aggregate(total=Sum('amount'))['total'] or MONEY_ZERO
+
+    @property
+    def balance(self): return max(MONEY_ZERO, self.amount_due - self.amount_paid)
+
+    def __str__(self): return f'{self.sale.sale_reference} installment {self.installment_number}'
+
+
+class OffPlanPayment(models.Model):
+    STATUS = [('pending','Pending'),('confirmed','Confirmed'),('failed','Failed'),('reversed','Reversed')]
+    METHODS = [('mpesa','M-Pesa'),('bank','Bank Transfer'),('card','Card'),('cash','Cash'),('other','Other')]
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='offplan_payments')
+    sale = models.ForeignKey('OffPlanSale', on_delete=models.PROTECT, related_name='payments')
+    payment_reference = models.CharField(max_length=150, unique=True)
+    external_reference = models.CharField(max_length=150, blank=True)
+    amount = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    currency = models.CharField(max_length=3, default='KES')
+    method = models.CharField(max_length=20, choices=METHODS)
+    status = models.CharField(max_length=20, choices=STATUS, default='pending', db_index=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='recorded_offplan_payments')
+    receipt_url = models.URLField(blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['organization','method','external_reference'], condition=~Q(external_reference=''), name='offplan_unique_external_payment_ref')]
+
+    def clean(self):
+        errors = {}
+        if self.sale_id and self.organization_id and self.sale.organization_id != self.organization_id: errors['sale'] = 'Sale belongs to another organization.'
+        if self.sale_id and self.currency != self.sale.currency: errors['currency'] = 'Currency must match sale currency.'
+        if errors: raise ValidationError(errors)
+
+    def __str__(self): return self.payment_reference
+
+
+class OffPlanPaymentAllocation(models.Model):
+    payment = models.ForeignKey('OffPlanPayment', on_delete=models.PROTECT, related_name='allocations')
+    installment = models.ForeignKey('OffPlanInstallment', on_delete=models.PROTECT, related_name='allocations')
+    amount = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['payment','installment'], name='offplan_unique_payment_installment_allocation')]
+
+    def clean(self):
+        if self.payment_id and self.installment_id and self.payment.sale_id != self.installment.sale_id:
+            raise ValidationError({'installment': 'Payment and installment must belong to the same sale.'})
+
+
+class OffPlanCommission(models.Model):
+    STATUS = [('pending','Pending'),('approved','Approved'),('paid','Paid'),('cancelled','Cancelled')]
+    sale = models.ForeignKey('OffPlanSale', on_delete=models.PROTECT, related_name='commissions')
+    agent = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='offplan_commissions')
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    commission_amount = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(MONEY_ZERO)])
+    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['sale','agent'], name='offplan_unique_sale_agent_commission')]
+
+
+class OffPlanUnitHandover(models.Model):
+    STATUS = [('pending','Pending'),('inspection','Buyer Inspection'),('ready','Ready'),('handed_over','Handed Over')]
+    sale = models.OneToOneField('OffPlanSale', on_delete=models.PROTECT, related_name='unit_handover')
+    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    scheduled_date = models.DateField(null=True, blank=True)
+    handed_over_at = models.DateTimeField(null=True, blank=True)
+    buyer_accepted_at = models.DateTimeField(null=True, blank=True)
+    keys_released = models.BooleanField(default=False)
+    documents_released = models.BooleanField(default=False)
+    buyer_notes = models.TextField(blank=True)
+    manager_notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='recorded_offplan_handovers')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self): return f'Handover {self.sale.sale_reference}'
 

@@ -207,6 +207,29 @@ from unit_app.models import (
 
 
     PlatformSetting,
+
+    ProjectStakeholder,
+
+    ProjectRiskIssue,
+
+
+    ProjectHandover, 
+    HandoverChecklistItem,
+    HandoverDocument,
+    HandoverInspection,
+    HandoverAcceptance,
+
+
+    OffPlanUnit,
+    OffPlanBuyer,
+    OffPlanLead,
+    OffPlanReservation,
+    OffPlanSale,
+    OffPlanInstallment,
+    OffPlanPayment,
+    OffPlanPaymentAllocation,
+    OffPlanCommission,
+    OffPlanUnitHandover,
 )
 
 # =========================
