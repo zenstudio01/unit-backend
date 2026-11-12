@@ -608,6 +608,41 @@ class PropertyAmenity(models.Model):
 
 
 
+class PropertyExpense(models.Model):
+    CATEGORY_CHOICES = [
+        ('repairs','Repairs & Maintenance'), ('utilities','Utilities'),
+        ('cleaning','Cleaning'), ('security','Security'), ('insurance','Insurance'),
+        ('taxes','Rates & Taxes'), ('management','Management Fees'),
+        ('supplies','Supplies'), ('landscaping','Landscaping'),
+        ('other','Other'),
+    ]
+    PAYMENT_METHODS = [('cash','Cash'),('mpesa','M-Pesa'),('bank','Bank Transfer'),('card','Card'),('other','Other')]
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, related_name='property_expenses')
+    property = models.ForeignKey('Property', on_delete=models.PROTECT, related_name='operating_expenses')
+    unit = models.ForeignKey('Unit', on_delete=models.PROTECT, null=True, blank=True, related_name='operating_expenses')
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    expense_date = models.DateField()
+    vendor = models.CharField(max_length=200, blank=True)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='cash')
+    reference = models.CharField(max_length=120, blank=True)
+    receipt_url = models.URLField(max_length=1000, blank=True)
+    receipt_public_id = models.CharField(max_length=500, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='recorded_property_expenses')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-expense_date', '-id']
+        indexes = [models.Index(fields=['organization','expense_date'])]
+
+    def __str__(self):
+        return f'{self.property.name}: {self.title} ({self.amount})'
+
+
+
 class UnitAmenity(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='unit_amenity')
     amenity = models.ForeignKey(Amenity, on_delete=models.CASCADE, related_name='uni_amenity')

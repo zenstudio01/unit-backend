@@ -78,6 +78,8 @@ from unit_app.models import (
     UnitAmenity,
     TenantUnitAssignment,
 
+    PropertyExpense,
+
     # =====================================================
     # ASSETS
     # =====================================================
@@ -178,6 +180,8 @@ from unit_app.models import (
     ProcurementDelivery as Delivery,
     ProcurementDeliveryItem as DeliveryItem,
     ProcurementMaterialIssue as MaterialIssue,
+
+    ProjectDocument,
 
 
     WorkforceSubcontractor,

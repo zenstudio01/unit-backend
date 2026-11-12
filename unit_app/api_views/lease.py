@@ -1,6 +1,26 @@
 from .common_imports import *
 from .helper import *
 
+import logging
+import uuid as lease_uuid
+from pathlib import Path
+
+import cloudinary.uploader
+from rest_framework.decorators import parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+lease_logger = logging.getLogger(__name__)
+LEASE_DOCUMENT_EXTENSIONS = {".pdf", ".doc", ".docx"}
+LEASE_DOCUMENT_MIMES = {
+    ".pdf": {"application/pdf"},
+    ".doc": {"application/msword", "application/octet-stream"},
+    ".docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/zip", "application/octet-stream",
+    },
+}
+LEASE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
+
 
 # ============================================================
 # CREATE LEASE
@@ -8,6 +28,7 @@ from .helper import *
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def create_lease(
     request
 ):
@@ -124,6 +145,26 @@ def create_lease(
     ).strip().lower()
 
     # ========================================================
+    # OPTIONAL LEASE DOCUMENT
+    # ========================================================
+    lease_document = request.FILES.get("lease_document")
+    if lease_document is not None:
+        extension = Path(lease_document.name).suffix.lower()
+        if extension not in LEASE_DOCUMENT_EXTENSIONS:
+            return JsonResponse({"success": False, "message": "Only PDF, DOC and DOCX lease documents are supported."}, status=400)
+        if lease_document.size > LEASE_DOCUMENT_MAX_BYTES or lease_document.size == 0:
+            return JsonResponse({"success": False, "message": "Lease document must be between 1 byte and 10 MB."}, status=400)
+        if lease_document.content_type not in LEASE_DOCUMENT_MIMES[extension]:
+            return JsonResponse({"success": False, "message": "Document content type does not match its extension."}, status=400)
+        # Signature check for PDF and ZIP-based DOCX; file extensions alone are not trustworthy.
+        header = lease_document.read(8)
+        lease_document.seek(0)
+        if extension == ".pdf" and not header.startswith(b"%PDF-"):
+            return JsonResponse({"success": False, "message": "Invalid PDF file."}, status=400)
+        if extension == ".docx" and not header.startswith(bytes([0x50, 0x4B, 0x03, 0x04])):
+            return JsonResponse({"success": False, "message": "Invalid DOCX file."}, status=400)
+
+    # ========================================================
     # DEBUG
     # ========================================================
 
@@ -136,8 +177,8 @@ def create_lease(
     )
 
     print(
-        "DATA:",
-        data
+        "FIELDS:",
+        list(data.keys())
     )
 
     print(
@@ -761,6 +802,7 @@ def create_lease(
     # TRANSACTION
     # ========================================================
 
+    uploaded_document_public_id = None
     try:
 
         with transaction.atomic():
@@ -993,6 +1035,31 @@ def create_lease(
                         user,
                 )
             )
+
+            # =================================================
+            # UPLOAD DOCUMENT TO CLOUDINARY (AUTHENTICATED RAW)
+            # =================================================
+            if lease_document is not None:
+                extension = Path(lease_document.name).suffix.lower()
+                document_id = (
+                    f"unit/organizations/{organization.id}/leases/{lease.id}/"
+                    f"{lease_uuid.uuid4().hex}{extension}"
+                )
+                lease_document.seek(0)
+                upload_result = cloudinary.uploader.upload(
+                    lease_document,
+                    resource_type="raw",
+                    type="authenticated",
+                    public_id=document_id,
+                    overwrite=False,
+                    invalidate=False,
+                )
+                uploaded_document_public_id = upload_result["public_id"]
+                lease.lease_document_public_id = uploaded_document_public_id
+                lease.lease_document_filename = Path(lease_document.name).name[:255]
+                lease.save(update_fields=[
+                    "lease_document_public_id", "lease_document_filename"
+                ])
 
             # =================================================
             # PRIMARY TENANT
@@ -1264,6 +1331,16 @@ def create_lease(
                         else None
                     ),
 
+                    "lease_document": (
+                        {
+                            "filename": lease.lease_document_filename,
+                            "public_id": lease.lease_document_public_id,
+                            "resource_type": "raw",
+                            "delivery_type": "authenticated",
+                        }
+                        if lease.lease_document_public_id else None
+                    ),
+
                     # These values are currently accepted
                     # from the frontend but are NOT fields
                     # on your Lease model.
@@ -1319,41 +1396,25 @@ def create_lease(
                 status=201,
             )
 
-    except Exception as error:
+    except Exception:
+        lease_logger.exception("Unable to create lease")
+        # Cloudinary is outside the database transaction: remove an orphan upload
+        # if a subsequent database operation fails.
+        if uploaded_document_public_id:
+            try:
+                cloudinary.uploader.destroy(
+                    uploaded_document_public_id,
+                    resource_type="raw",
+                    type="authenticated",
+                    invalidate=True,
+                )
+            except Exception:
+                lease_logger.exception("Could not clean up orphaned lease document")
+        return JsonResponse({
+            "success": False,
+            "message": "Unable to create lease. Please try again."
+        }, status=500)
 
-        print(
-            "========================================"
-        )
-
-        print(
-            "CREATE LEASE ERROR:"
-        )
-
-        print(
-            repr(
-                error
-            )
-        )
-
-        print(
-            "========================================"
-        )
-
-        return JsonResponse(
-            {
-                "success":
-                    False,
-
-                "message":
-                    "Unable to create lease.",
-
-                "error":
-                    str(
-                        error
-                    ),
-            },
-            status=500,
-        )
 
 
 from django.http import JsonResponse
@@ -2386,6 +2447,16 @@ def lease_details(
 
                 "duration_days":
                     duration_days,
+
+                "lease_document": (
+                    {
+                        "filename": lease.lease_document_filename,
+                        "public_id": lease.lease_document_public_id,
+                        "resource_type": "raw",
+                        "delivery_type": "authenticated",
+                    }
+                    if lease.lease_document_public_id else None
+                ),
 
                 "monthly_rent":
                     str(
@@ -3805,5 +3876,4 @@ def property_manager_leases(request):
         "leases": data,
         "count": len(data),
     })
-
 

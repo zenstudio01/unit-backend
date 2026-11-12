@@ -38,6 +38,10 @@ from .api_views.lease import *
 from .api_views.invoice import *
 from .api_views.prop_profile import *
 
+# property manager
+from .api_views.property_manager_apis.property_expense_api import *
+from .api_views.property_manager_apis.property_reports import *
+
 # project manager
 from .api_views.project_manager.project_manager_dashboard import *
 from .api_views.project_manager.project_manager_projects import *
@@ -454,6 +458,16 @@ urlpatterns = [
     path('buyer/off-plan/payments/', payments),
     path('buyer/off-plan/handovers/', handovers),
     path('buyer/off-plan/handovers/<int:handover_id>/accept/', accept_handover),
+
+    # project manager - property expense
+    path('property-expenses/', property_expenses),
+    path('property-expenses/<int:expense_id>/', property_expense_detail),
+    path('property-expenses/properties/', expense_properties),
+    path('property-expenses/properties/<int:property_id>/units/', expense_units),
+
+
+    # project manager - property reports
+    path('property-reports/', property_manager_reports, name='property-manager-reports'),
 
 
 

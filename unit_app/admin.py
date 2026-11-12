@@ -34,6 +34,8 @@ from .models import (
     UnitAmenity,
     TenantUnitAssignment,
 
+    PropertyExpense,
+
     # =====================================================
     # ASSETS
     # =====================================================
@@ -224,6 +226,7 @@ admin.site.register(Amenity)
 admin.site.register(PropertyAmenity)
 admin.site.register(UnitAmenity)
 admin.site.register(TenantUnitAssignment)
+admin.site.register(PropertyExpense)
 
 
 # ============================================================
